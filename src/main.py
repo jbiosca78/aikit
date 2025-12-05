@@ -2,7 +2,7 @@
 from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import openai
+from openai import OpenAI
 from pathlib import Path
 import yaml
 import importlib
@@ -18,6 +18,39 @@ from contextlib import asynccontextmanager
 services: Dict[str, BaseService] = {}        # se llenan en startup()
 conversation_store: Dict[str, List[Dict]] = {}  # historial por conversation_id
 
+client=OpenAI(
+	base_url="http://localhost:11434/v1",
+	#base_url="http://media:11434/v1",
+	api_key="ollama"
+)
+#client=OpenAI()
+#model="gpt-4.1" # o el que uses con tool calling
+#model="gpt-5-chat-latest"  # o el que uses con tool calling
+#model="gpt-5-mini"
+#model="gpt-4o-mini"
+#model="mistral:latest"
+#model="qwen2.5:1.5b" # 2G
+#model="qwen2.5:3b" # 5G, 6G con buffers
+#model="qwen2.5:7b" # 13G en fp16
+#model="qwen2.5:14b" # cuantizado con q4_K_M ocupa ~12G
+#model="qwen2.5:32b" # cuantizado con q4_K_M ocupa ~20G
+
+# inventada?
+# "qwen3:0.5B" # 1.5G, q4_K_M=0.7G
+# "qwen3:1.5B" # 3G, q4_K_M=1.5G
+# "qwen3:7B" # 14G, q4_K_M=8G
+# "qwen3:14B" # 28G, q4_K_M=14G
+# "qwen3:32B" # 65G, q4_K_M=24G
+
+model="qwen3:8b" # https://ollama.com/library/qwen3:8b tags=tools,thinking
+
+# media
+#model="qwen3:8b" # https://ollama.com/library/qwen3:8b tags=tools,thinking
+#model="c01zaut_Qwen2.5-3B-Instruct-RK3588-1.1.4" # en media muy lento y falla mucho
+
+# modelos con tools: https://ollama.com/blog/tool-support
+# llama3.1:8b https://ollama.com/library/llama3.1
+# https://ollama.com/library/mistral-nemo
 
 def load_services(config_path: str = "aikit.yaml"):
 	"""
@@ -155,17 +188,15 @@ async def chat(req: ChatRequest):
 			return {"answer": assistant_answer, "conversation_id": conv_id}
 
 		# Llamada a la IA con tools activadas
-		response = openai.chat.completions.create(
-			#model="gpt-4.1",  # o el que uses con tool calling
-			#model="gpt-5-chat-latest",  # o el que uses con tool calling
-			#model="gpt-5-mini",
-			model="gpt-4o-mini",
+		response = client.chat.completions.create(
+			model=model,
 			messages=messages,
 			tools=tools,
 			tool_choice="auto",
 		)
 
 		msg = response.choices[0].message
+		print(f"msg={msg}")
 
 		# ¿Hay tool_calls?
 		tool_calls = getattr(msg, "tool_calls", None)
@@ -180,6 +211,7 @@ async def chat(req: ChatRequest):
 
 			# Ejecutar cada tool_call y añadir su resultado
 			for tc in tool_calls:
+				print(f"run tool {tc}")
 				tool_result = execute_tool_call(services, tc)
 
 				messages.append({
