@@ -9,14 +9,52 @@ from pydantic import BaseModel
 from pathlib import Path
 import yaml
 import importlib
+import importlib.util
 import inspect
-
-#from tools import build_tools_from_services
-#from executor import execute_tool_call
-#from services.base import BaseService
+import sys
 from contextlib import asynccontextmanager
 
-conversation_store: Dict[str, List[Dict]] = {} # historial por conversation_id
+# Variable global para almacenar el módulo cargado
+motor = None
+
+def load_motor():
+	"""
+	Carga dinámicamente un módulo desde ../motor/
+
+	Args:
+		module_name: nombre del módulo sin extensión .py
+
+	Returns:
+		El módulo cargado
+	"""
+	global config
+	config_motor=config.get("motor")
+	module_name=config_motor["module"]
+
+	# get motor modules path
+	current_dir = Path(__file__).parent
+	motor_dir = current_dir.parent / "motor"
+	module_path = motor_dir / f"{module_name}.py"
+	if not module_path.exists():
+		raise FileNotFoundError(f"No se encontró el módulo: {module_path}")
+
+	# dynamic load module
+	spec_name = f"motor.{module_name.replace('-', '_')}"
+	spec = importlib.util.spec_from_file_location(spec_name, module_path)
+	if spec is None or spec.loader is None:
+		raise ImportError(f"No se pudo cargar el módulo desde: {module_path}")
+	module = importlib.util.module_from_spec(spec)
+	sys.modules[spec_name] = module
+	spec.loader.exec_module(module)
+	print(f"✓ Module successfully loaded: {module_name} from {module_path}")
+
+	params=config_motor["params"]
+	#model="mistral:7b-instruct-v0.3-q4_K_M"
+	#module.init(model=model)
+	module.init(**params)
+
+	global motor
+	motor=module
 
 @asynccontextmanager
 async def startup(app: FastAPI):
@@ -24,11 +62,25 @@ async def startup(app: FastAPI):
 	FastAPI llamará automáticamente a esta función al arrancar y cerrar.
 	"""
 	# Startup
-	#load_services()
-	print("Startup")
-	yield
-	# Shutdown (si necesitas hacer limpieza)
+	global config
+	config=yaml.safe_load((Path(__file__).parent.parent / "aikit.yaml").read_text())
+	load_motor()
 
+	#global motor
+	#try:
+	#	motor =
+	#	print(f"Motor inicializado: {motor_module}")
+	#except Exception as e:
+	#	print(f"Error al cargar motor: {e}")
+	#	raise
+
+	# Service running
+	yield
+
+	# Shutdown
+	print("Bye")
+
+conversation_store: Dict[str, List[Dict]] = {} # historial por conversation_id
 app = FastAPI(lifespan=startup)
 
 # Configurar CORS
@@ -127,10 +179,12 @@ async def chat(req: ChatRequest):
 #		# Guardar en el historial sólo lo nuevo (desde donde empezó esta petición)
 #		save_history(conv_id, messages[len(history):])
 
-	answer="tienes razón"
+	#answer="tienes razón"
+
+	answer=motor.chat(req.message)
 
 	return {
-		"answer": answer
+		"answer": answer,
 		#"conversation_id": conv_id,
 	}
 

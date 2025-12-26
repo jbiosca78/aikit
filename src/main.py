@@ -19,7 +19,7 @@ services: Dict[str, BaseService] = {}        # se llenan en startup()
 conversation_store: Dict[str, List[Dict]] = {}  # historial por conversation_id
 
 client=OpenAI(
-	base_url="http://localhost:11434/v1",
+	base_url="http://draco:11434/v1",
 	#base_url="http://media:11434/v1",
 	api_key="ollama"
 )
@@ -42,7 +42,14 @@ client=OpenAI(
 # "qwen3:14B" # 28G, q4_K_M=14G
 # "qwen3:32B" # 65G, q4_K_M=24G
 
-model="qwen3:8b" # https://ollama.com/library/qwen3:8b tags=tools,thinking
+# https://ollama.com/library/mistral:7b-instruct-v0.3-q4_K_M
+# size: 4.4G
+# parameters: 7.25B
+# quantization Q4_K_M
+# tags: tools, 7b
+model="mistral:7b-instruct-v0.3-q4_K_M"
+
+#model="qwen3:8b" # https://ollama.com/library/qwen3:8b tags=tools,thinking
 
 # media
 #model="qwen3:8b" # https://ollama.com/library/qwen3:8b tags=tools,thinking
