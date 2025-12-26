@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente de voz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .mic-container {
+            margin: 30px 0;
+        }
+
+        .mic-button {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            border: none;
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+            box-shadow: 0 10px 20px rgba(238, 90, 36, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .mic-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 25px rgba(238, 90, 36, 0.4);
+        }
+
+        .mic-button.recording {
+            background: linear-gradient(135deg, #ff3838, #c23616);
+            animation: pulse 1.5s infinite;
+        }
+
+        .mic-icon {
+            font-size: 40px;
+            color: white;
+        }
+
+        .status {
+            margin: 20px 0;
+            font-size: 18px;
+            color: #555;
+            min-height: 27px;
+        }
+
+        .transcript-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 150px;
+            text-align: left;
+            border: 2px dashed #dee2e6;
+        }
+
+        .transcript-text {
+            font-size: 18px;
+            line-height: 1.5;
+            color: #333;
+            outline: none;
+            cursor: text;
+        }
+
+        .transcript-text:focus {
+            border: none;
+            outline: none;
+        }
+
+        .placeholder {
+            color: #999;
+            font-style: italic;
+        }
+
+        .actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-copy {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-clear {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-send {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .browser-support {
+            margin-top: 25px;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 10px;
+            font-size: 14px;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .response-container {
+            background: #e8f5e9;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 100px;
+            text-align: left;
+            border: 2px solid #c8e6c9;
+            display: none;
+        }
+
+        .response-container.show {
+            display: block;
+        }
+
+        .response-label {
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .response-text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #1b5e20;
+            white-space: pre-wrap;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2ecc71;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 15px rgba(255, 107, 107, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+            }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .mic-button {
+                width: 80px;
+                height: 80px;
+            }
+
+            .mic-icon {
+                font-size: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Asistente de Voz</h1>
+        <p class="subtitle">Haz clic en el micrófono y habla</p>
+
+        <div class="mic-container">
+            <button id="micButton" class="mic-button" title="Haz clic y habla">
+                <div class="mic-icon">🎤</div>
+            </button>
+        </div>
+
+        <div class="status" id="status">
+            Presiona el botón para empezar
+        </div>
+
+        <div class="transcript-container">
+            <div id="transcript" class="transcript-text" contenteditable="true">
+                <span class="placeholder">El texto reconocido aparecerá aquí...</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="clearButton" class="btn btn-clear">Limpiar</button>
+            <button id="copyButton" class="btn btn-copy">Copiar texto</button>
+            <button id="sendButton" class="btn btn-send">Enviar al Chat</button>
+        </div>
+
+        <div id="responseContainer" class="response-container">
+            <div class="response-label">Respuesta del Asistente:</div>
+            <div id="responseText" class="response-text"></div>
+        </div>
+
+        <div class="browser-support">
+            <strong>Nota:</strong> Funciona mejor en Chrome, Edge y Safari. Asegúrate de permitir el acceso al micrófono.
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const micButton = document.getElementById('micButton');
+            const status = document.getElementById('status');
+            const transcript = document.getElementById('transcript');
+            const copyButton = document.getElementById('copyButton');
+            const clearButton = document.getElementById('clearButton');
+            const sendButton = document.getElementById('sendButton');
+            const responseContainer = document.getElementById('responseContainer');
+            const responseText = document.getElementById('responseText');
+
+            let recognition;
+            let isRecording = false;
+
+            // Verificar si el navegador soporta reconocimiento de voz
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+
+                // Configurar el reconocimiento
+                recognition.continuous = false;
+                recognition.interimResults = true;
+                recognition.lang = 'es-ES'; // Español de España
+
+                // Eventos del reconocimiento
+                recognition.onstart = () => {
+                    isRecording = true;
+                    micButton.classList.add('recording');
+                    status.textContent = 'Escuchando... Habla ahora';
+                    transcript.innerHTML = '';
+                };
+
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcriptPart = event.results[i][0].transcript;
+
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcriptPart;
+                        } else {
+                            interimTranscript += transcriptPart;
+                        }
+                    }
+
+                    // Mostrar resultados
+                    if (finalTranscript) {
+                        transcript.innerHTML = finalTranscript;
+                    } else if (interimTranscript) {
+                        transcript.innerHTML = interimTranscript + '<span style="color:#999;"> (escuchando...)</span>';
+                    }
+                };
+
+                recognition.onend = () => {
+                    isRecording = false;
+                    micButton.classList.remove('recording');
+                    status.textContent = 'Grabación finalizada';
+                };
+
+                recognition.onerror = (event) => {
+                    isRecording = false;
+                    micButton.classList.remove('recording');
+
+                    if (event.error === 'not-allowed') {
+                        status.textContent = 'Error: Permiso de micrófono denegado';
+                    } else if (event.error === 'no-speech') {
+                        status.textContent = 'No se detectó voz. Intenta de nuevo';
+                    } else {
+                        status.textContent = `Error: ${event.error}`;
+                    }
+                };
+
+            } else {
+                // El navegador no soporta reconocimiento de voz
+                status.textContent = 'Tu navegador no soporta reconocimiento de voz. Prueba con Chrome, Edge o Safari.';
+                micButton.disabled = true;
+                micButton.style.opacity = '0.5';
+            }
+
+            // Controlar la grabación con el botón
+            micButton.addEventListener('click', () => {
+                if (!recognition) return;
+
+                if (isRecording) {
+                    recognition.stop();
+                } else {
+                    try {
+                        recognition.start();
+                    } catch (error) {
+                        status.textContent = 'Error al iniciar el reconocimiento';
+                    }
+                }
+            });
+
+            // Copiar texto al portapapeles
+            copyButton.addEventListener('click', () => {
+                const textToCopy = transcript.innerText;
+
+                if (textToCopy && !textToCopy.includes('El texto reconocido aparecerá aquí')) {
+                    navigator.clipboard.writeText(textToCopy)
+                        .then(() => {
+                            // Feedback visual
+                            const originalText = copyButton.textContent;
+                            copyButton.textContent = '¡Copiado!';
+                            copyButton.style.background = '#2ecc71';
+
+                            setTimeout(() => {
+                                copyButton.textContent = originalText;
+                                copyButton.style.background = '';
+                            }, 2000);
+                        })
+                        .catch(err => {
+                            console.error('Error al copiar: ', err);
+                            status.textContent = 'Error al copiar el texto';
+                        });
+                }
+            });
+
+            // Limpiar el texto
+            clearButton.addEventListener('click', () => {
+                transcript.innerHTML = '<span class="placeholder">El texto reconocido aparecerá aquí...</span>';
+                status.textContent = 'Presiona el botón para empezar';
+                responseContainer.classList.remove('show');
+            });
+
+            // Enviar al chat
+            sendButton.addEventListener('click', async () => {
+                const message = transcript.innerText;
+
+                // Validar que hay texto
+                if (!message || message.includes('El texto reconocido aparecerá aquí')) {
+                    status.textContent = 'No hay texto para enviar';
+                    return;
+                }
+
+                // Deshabilitar botón y mostrar loading
+                sendButton.disabled = true;
+                sendButton.innerHTML = '<span class="loading"></span> Enviando...';
+                responseContainer.classList.add('show');
+                responseText.innerHTML = '<span class="loading"></span> Pensando...';
+
+                try {
+                    // Enviar al endpoint
+                    const response = await fetch('http://localhost:8000/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            conversation_id: 'web-client'
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Error HTTP: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    responseText.textContent = data.answer;
+                    status.textContent = 'Respuesta recibida';
+
+                } catch (error) {
+                    console.error('Error al enviar:', error);
+                    responseText.textContent = `Error: ${error.message}. Asegúrate de que el servidor esté corriendo en http://localhost:8000`;
+                    status.textContent = 'Error al conectar con el servidor';
+                } finally {
+                    // Rehabilitar botón
+                    sendButton.disabled = false;
+                    sendButton.textContent = 'Enviar al Chat';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
