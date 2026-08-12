@@ -7,12 +7,12 @@ from typing import Dict, Any, Optional, List
 client = None
 model_id = None
 
-def init(url, apikey, model):
+def init(url="", apikey="", model="", **kwargs):
 	global client, model_id
 	model_id = model
 	client = OpenAI(base_url=url, api_key=apikey)
 
-def chat(message):
+def chat(message, tools=None, tool_executor=None, **kwargs):
 	global client, model_id
 
 	messages: List[Dict[str, Any]] = []
@@ -20,11 +20,14 @@ def chat(message):
 	messages.append({"role": "user", "content": message})
 
 	# Llamada a la IA con tools activadas
-	response = client.chat.completions.create(
-		model=model_id,
-		messages=messages,
-		#tools=tools,
-		#tool_choice="auto",
-	)
+	request: Dict[str, Any] = {
+		"model": model_id,
+		"messages": messages,
+	}
+	if tools:
+		request["tools"] = tools
+		request["tool_choice"] = "auto"
+
+	response = client.chat.completions.create(**request)
 
 	return response.choices[0].message.content

@@ -1,10 +1,10 @@
 # app/agent/executor.py
 import json
 from typing import Dict, Any, List
-from services.base import BaseService
+from services.service_contract import ServiceContract
 
 def execute_tool_call(
-    services: Dict[str, BaseService],
+    services: Dict[str, ServiceContract],
     tool_call: Any,
 ) -> Dict[str, Any]:
     """

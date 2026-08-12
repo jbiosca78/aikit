@@ -9,7 +9,7 @@ class MethodSchema(BaseModel):
     params_schema: Dict[str, Any]  # JSON Schema-like
     returns_schema: Dict[str, Any]
 
-class BaseService(ABC):
+class ServiceContract(ABC):
     name: str
     description: str
 

@@ -1,7 +1,7 @@
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
-from .base import BaseService, MethodSchema
+from .service_contract import ServiceContract, MethodSchema
 
 
 class User(BaseModel):
@@ -11,7 +11,7 @@ class User(BaseModel):
     credits: int
 
 
-class UsersService(BaseService):
+class Service(ServiceContract):
     name = "users"
     description = "Gestión de usuarios: listado, accesos y créditos."
 

@@ -1,8 +1,8 @@
 # app/agent/tools.py
 from typing import Dict, Any, List
-from services.base import BaseService
+from services.service_contract import ServiceContract
 
-def build_tools_from_services(services: Dict[str, BaseService]) -> List[Dict[str, Any]]:
+def build_tools_from_services(services: Dict[str, ServiceContract]) -> List[Dict[str, Any]]:
     tools = []
     for svc_name, svc in services.items():
         for m in svc.list_methods():

@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 from pydantic import BaseModel
-from .base import BaseService, MethodSchema
+from .service_contract import ServiceContract, MethodSchema
 
 
 class StockItem(BaseModel):
@@ -9,7 +9,7 @@ class StockItem(BaseModel):
     descripcion: str
 
 
-class StockService(BaseService):
+class Service(ServiceContract):
     name = "stock"
     description = "Gestión de inventario físico: sitios y artículos almacenados."
 

@@ -10,12 +10,12 @@ import inspect
 
 from tools import build_tools_from_services
 from executor import execute_tool_call
-from services.base import BaseService
+from services.service_contract import ServiceContract
 from contextlib import asynccontextmanager
 
 #import colored_traceback
 #colored_traceback.add_hook()
-services: Dict[str, BaseService] = {}        # se llenan en startup()
+services: Dict[str, ServiceContract] = {}        # se llenan en startup()
 conversation_store: Dict[str, List[Dict]] = {}  # historial por conversation_id
 
 client=OpenAI(
@@ -75,16 +75,18 @@ def load_services(config_path: str = "aikit.yaml"):
 
 	for svc_cfg in cfg.get("services", []):
 		name = svc_cfg["name"]
-		module_name = svc_cfg["module"]
-		class_name = svc_cfg["class"]
+		# Convencion principal: un unico nombre en YAML.
+		# name: stock -> services.stock.Service
+		module_name = svc_cfg.get("module", f"services.{name}")
+		class_name = svc_cfg.get("class", "Service")
 
 		module = importlib.import_module(module_name)
 		cls = getattr(module, class_name, None)
 		if cls is None:
 			raise RuntimeError(f"No se encontró la clase {class_name} en {module_name}")
 
-		if not inspect.isclass(cls) or not issubclass(cls, BaseService):
-			raise RuntimeError(f"{class_name} no es un BaseService válido")
+		if not inspect.isclass(cls) or not issubclass(cls, ServiceContract):
+			raise RuntimeError(f"{class_name} no implementa ServiceContract")
 
 		instance = cls()
 		loaded[name] = instance
