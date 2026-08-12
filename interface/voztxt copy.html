@@ -26,7 +26,8 @@
             border-radius: 20px;
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
             width: 100%;
-            max-width: 500px;
+            /*max-width: 500px;*/
+            max-width: 60%;
             padding: 30px;
             text-align: center;
         }
@@ -108,6 +109,11 @@
         }
 
         .placeholder {
+            color: #999;
+            font-style: italic;
+        }
+
+        .sent-text {
             color: #999;
             font-style: italic;
         }
@@ -244,7 +250,7 @@
 <body>
     <div class="container">
         <h1>Asistente de Voz</h1>
-        <p class="subtitle">Haz clic en el micrófono y habla</p>
+        <!--<p class="subtitle">Haz clic en el micrófono y habla</p>-->
 
         <div class="mic-container">
             <button id="micButton" class="mic-button" title="Haz clic y habla">
@@ -253,7 +259,7 @@
         </div>
 
         <div class="status" id="status">
-            Presiona el botón para empezar
+            Presiona el icono del micrófono para empezar
         </div>
 
         <div class="transcript-container">
@@ -265,7 +271,7 @@
         <div class="actions">
             <button id="clearButton" class="btn btn-clear">Limpiar</button>
             <button id="copyButton" class="btn btn-copy">Copiar texto</button>
-            <button id="sendButton" class="btn btn-send">Enviar al Chat</button>
+            <button id="sendButton" class="btn btn-send">Enviar</button>
         </div>
 
         <div id="responseContainer" class="response-container">
@@ -336,6 +342,12 @@
                     isRecording = false;
                     micButton.classList.remove('recording');
                     status.textContent = 'Grabación finalizada';
+
+                    // Enviar automáticamente si hay texto
+                    const currentText = transcript.innerText.trim();
+                    if (currentText && !currentText.includes('El texto reconocido aparecerá aquí')) {
+                        sendButton.click();
+                    }
                 };
 
                 recognition.onerror = (event) => {
@@ -404,6 +416,63 @@
                 responseContainer.classList.remove('show');
             });
 
+            // Manejar el placeholder cuando el usuario empieza a escribir
+            transcript.addEventListener('focus', () => {
+                if (transcript.innerText.includes('El texto reconocido aparecerá aquí')) {
+                    transcript.innerHTML = '';
+                }
+                // Si tiene la clase 'sent-text', limpiar al hacer foco
+                if (transcript.classList.contains('sent-text')) {
+                    transcript.innerHTML = '';
+                    transcript.classList.remove('sent-text');
+                }
+
+                // Asegurar que el cursor aparezca correctamente
+                if (transcript.innerHTML === '') {
+                    transcript.focus();
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    range.setStart(transcript, 0);
+                    range.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+            });
+
+            transcript.addEventListener('blur', () => {
+                if (transcript.innerText.trim() === '') {
+                    transcript.innerHTML = '<span class="placeholder">El texto reconocido aparecerá aquí...</span>';
+                    transcript.classList.remove('sent-text');
+                }
+            });
+
+            transcript.addEventListener('input', () => {
+                // Si el usuario empieza a escribir, eliminar el placeholder
+                if (transcript.querySelector('.placeholder')) {
+                    transcript.innerHTML = '';
+                }
+                // Si tiene la clase 'sent-text', limpiar al escribir
+                if (transcript.classList.contains('sent-text')) {
+                    transcript.innerHTML = '';
+                    transcript.classList.remove('sent-text');
+                }
+            });
+
+            // Enviar con Ctrl+Enter
+            transcript.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    sendButton.click();
+                }
+            });
+
+            // Hacer click en el contenedor enfoca el campo editable
+            document.querySelector('.transcript-container').addEventListener('click', (e) => {
+                if (e.target.classList.contains('transcript-container')) {
+                    transcript.focus();
+                }
+            });
+
             // Enviar al chat
             sendButton.addEventListener('click', async () => {
                 const message = transcript.innerText;
@@ -440,6 +509,9 @@
                     const data = await response.json();
                     responseText.textContent = data.answer;
                     status.textContent = 'Respuesta recibida';
+
+                    // Volver el texto gris después de enviar
+                    transcript.classList.add('sent-text');
 
                 } catch (error) {
                     console.error('Error al enviar:', error);
