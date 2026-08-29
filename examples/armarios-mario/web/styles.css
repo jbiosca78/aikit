@@ -376,6 +376,7 @@ a {
     flex-wrap: wrap;
 }
 
+
 @keyframes rise {
     from {
         opacity: 0;
@@ -421,3 +422,4 @@ a {
         grid-template-columns: 1fr;
     }
 }
+

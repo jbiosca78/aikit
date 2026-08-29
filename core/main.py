@@ -2,7 +2,7 @@
 
 # app/main.py
 from typing import Dict, Any, Optional, List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 #from openai import OpenAI
@@ -11,6 +11,7 @@ import yaml
 import importlib
 import importlib.util
 import inspect
+import os
 import sys
 import json
 import logging
@@ -18,6 +19,13 @@ import re
 from contextlib import asynccontextmanager
 from engine.engine_contract import validate_engine_contract
 from services.service_contract import ServiceContract
+from core.history import HistoryStore, build_history_store
+from core.auth import (
+	build_session_config,
+	issue_session_token,
+	new_principal_id,
+	resolve_principal,
+)
 
 #import colored_traceback
 #colored_traceback.add_hook()
@@ -27,8 +35,10 @@ install(show_locals=True) # show_locals muestra variables locales en cada frame
 
 # Variable global para almacenar el módulo cargado
 engine = None
+config: Dict[str, Any] = {}
 services: Dict[str, ServiceContract] = {}
 tools: List[Dict[str, Any]] = []
+history_store: Optional[HistoryStore] = None
 logger = logging.getLogger("aikit")
 
 
@@ -175,7 +185,7 @@ def load_services() -> Dict[str, ServiceContract]:
 
 		instance = cls()
 		loaded[name] = instance
-		print(f"✓ Servicio cargado: {name} ({module_name}.{class_name})")
+		logger.info("service loaded name=%s class=%s", name, f"{module_name}.{class_name}")
 
 	return loaded
 
@@ -204,7 +214,40 @@ def init_tools() -> None:
 	global services, tools
 	services = load_services()
 	tools = build_tools_from_services(services)
-	print(f"✓ Tools inicializadas: {len(tools)}")
+	logger.info("tools initialized count=%s", len(tools))
+
+
+def build_effective_message(message: str, history: List[Dict[str, Any]], cfg: Dict[str, Any]) -> str:
+	history_cfg = cfg.get("history", {}) if isinstance(cfg, dict) else {}
+	if not isinstance(history_cfg, dict) or not history_cfg.get("enabled", True):
+		return message
+
+	max_ctx = int(history_cfg.get("context_messages", 12))
+	if max_ctx <= 0 or not history:
+		return message
+
+	ctx = history[-max_ctx:]
+	lines: List[str] = []
+	for item in ctx:
+		role = str(item.get("role", "")).strip().lower()
+		content = str(item.get("content", "")).strip()
+		if not content:
+			continue
+		if role == "assistant":
+			lines.append(f"asistente: {content}")
+		else:
+			lines.append(f"usuario: {content}")
+
+	if not lines:
+		return message
+
+	transcript = "\n".join(lines)
+	return (
+		"Contexto reciente de la conversacion (de mas antiguo a mas reciente):\n"
+		f"{transcript}\n\n"
+		"Mensaje actual del usuario:\n"
+		f"{message}"
+	)
 
 
 def execute_tool_call(func_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
@@ -233,49 +276,25 @@ def execute_tool_call(func_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 	}
 
 
-def _normalize_music_operational_answer(
-	message: str,
-	answer: str,
-	tool_events: List[Dict[str, Any]],
-) -> str:
-	# Solo aplicamos normalizacion para comandos musicales operativos.
-	if not isinstance(message, str) or not message.strip().lower().startswith("musica:"):
-		return answer
-
+def _extract_tool_user_message(tool_events: List[Dict[str, Any]]) -> Optional[str]:
+	"""Return an optional user-facing message from the last successful tool event."""
 	if not tool_events:
-		return answer
+		return None
 
 	last = tool_events[-1]
-	func_name = str(last.get("func_name", ""))
 	result = last.get("result")
-	if not isinstance(result, dict) or not result.get("ok"):
-		return answer
+	if not isinstance(result, dict):
+		return None
+	if not result.get("ok"):
+		return None
 
-	try:
-		svc_name, method_name = func_name.split("__", 1)
-	except ValueError:
-		return answer
+	user_message = result.get("user_message")
+	if not isinstance(user_message, str):
+		return None
 
-	if svc_name != "music":
-		return answer
+	clean = user_message.strip()
+	return clean or None
 
-	if method_name in {"play_query", "play_track", "play_uri", "resume"}:
-		return "Reproduciendo."
-	if method_name in {"add_query", "add_track", "add_uri"}:
-		return "Anadido a la cola."
-	if method_name == "pause":
-		return "Pausado."
-	if method_name == "next_track":
-		return "Siguiente pista."
-	if method_name == "previous_track":
-		return "Pista anterior."
-	if method_name == "set_volume":
-		volume = result.get("volume")
-		if isinstance(volume, int):
-			return f"Volumen al {volume}%."
-		return "Volumen ajustado."
-
-	return answer
 
 def init_engine():
 	"""
@@ -306,7 +325,7 @@ def init_engine():
 	module = importlib.util.module_from_spec(spec)
 	sys.modules[spec_name] = module
 	spec.loader.exec_module(module)
-	print(f"✓ Module successfully loaded: {module_name} from {module_path}")
+	logger.info("engine module loaded module=%s path=%s", module_name, module_path)
 
 	# Valida que el modulo cumple el contrato minimo del engine.
 	validate_engine_contract(module)
@@ -332,14 +351,18 @@ async def init(app: FastAPI):
 	"""
 
 	try:
-		# Read config
+		# Read config (AIKIT_CONFIG permite usar configuraciones alternativas, p.ej. examples/)
 		global config
-		config=yaml.safe_load((Path(__file__).parent.parent / "aikit.yaml").read_text())
+		config_path = Path(os.getenv("AIKIT_CONFIG") or (Path(__file__).parent.parent / "aikit.yaml"))
+		config=yaml.safe_load(config_path.read_text())
 		setup_logging(config.get("log"))
 
 		# Init engine
 		init_engine()
 		init_tools()
+		global history_store
+		history_store = build_history_store(config)
+		logger.info("history store initialized backend=%s", config.get("history", {}).get("backend", "memory"))
 		logger.info("aikit started")
 	except Exception:
 		logger.exception("Startup error while loading config/engine/services")
@@ -359,7 +382,6 @@ async def init(app: FastAPI):
 	finally:
 		logger.info("aikit stopped")
 
-conversation_store: Dict[str, List[Dict]] = {} # historial por conversation_id
 app = FastAPI(lifespan=init)
 
 # Configurar CORS
@@ -371,29 +393,119 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Ejemplo opcional: endpoint para llamar un método directamente (útil mientras montas la IA)
-from pydantic import BaseModel
-from typing import Any, Dict
-
-def get_history(conv_id: Optional[str]) -> List[Dict[str, Any]]:
-	if not conv_id:
-		return []
-	return conversation_store.setdefault(conv_id, [])
-
-def save_history(conv_id: Optional[str], messages: List[Dict[str, Any]]):
-	if not conv_id:
-		return
-	conversation_store.setdefault(conv_id, []).extend(messages)
-
 class ChatRequest(BaseModel):
 	conversation_id: Optional[str] = None
 	message: str
 
+
+class ChatResponse(BaseModel):
+	answer: str
+	conversation_id: str
+	principal_id: str
+
+
+@app.get("/health")
+async def health() -> Dict[str, Any]:
+	"""Liveness probe: process is running."""
+	return {
+		"status": "ok",
+		"service": "aikit",
+	}
+
+
+@app.get("/readiness")
+async def readiness() -> Dict[str, Any]:
+	"""Readiness probe: core dependencies are initialized."""
+	issues: List[str] = []
+
+	if not isinstance(config, dict) or not config:
+		issues.append("config_not_loaded")
+
+	if engine is None:
+		issues.append("engine_not_initialized")
+
+	if not services:
+		issues.append("services_not_initialized")
+
+	if not tools:
+		issues.append("tools_not_initialized")
+
+	if history_store is None:
+		issues.append("history_store_not_initialized")
+
+	if issues:
+		raise HTTPException(
+			status_code=503,
+			detail={
+				"status": "not_ready",
+				"issues": issues,
+			},
+		)
+
+	return {
+		"status": "ready",
+		"service": "aikit",
+		"engine": getattr(engine, "__name__", "unknown"),
+		"services": sorted(list(services.keys())),
+		"tools_count": len(tools),
+	}
+
+
+@app.post("/session")
+async def create_session(response: Response) -> Dict[str, Any]:
+	"""Emite una sesión anónima firmada (modo cookie). El identificador lo genera el backend."""
+	cookie_cfg, secret = build_session_config(config)
+	if not secret:
+		raise HTTPException(status_code=404, detail="Session mode not enabled")
+
+	max_age = int(cookie_cfg.get("max_age_seconds", 86400) or 86400)
+	principal_id = new_principal_id()
+	token = issue_session_token(principal_id, secret, max_age)
+
+	response.set_cookie(
+		key=str(cookie_cfg.get("cookie_name", "aikit_session") or "aikit_session"),
+		value=token,
+		max_age=max_age,
+		httponly=True,
+		secure=bool(cookie_cfg.get("secure", False)),
+		samesite=str(cookie_cfg.get("samesite", "lax") or "lax"),
+	)
+	# Se devuelve también en el cuerpo para clientes cross-origin que no puedan usar cookies.
+	return {"principal_id": principal_id, "token": token, "expires_in": max_age}
+
+
+@app.get("/conversations")
+async def list_conversations(request: Request) -> Dict[str, Any]:
+	if history_store is None:
+		raise HTTPException(status_code=503, detail="History store not initialized")
+	principal_id = resolve_principal(request, config)
+	conversations = history_store.list_conversations(principal_id)
+	return {"principal_id": principal_id, "conversation_ids": conversations}
+
+
+@app.get("/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str, request: Request) -> Dict[str, Any]:
+	if history_store is None:
+		raise HTTPException(status_code=503, detail="History store not initialized")
+	principal_id = resolve_principal(request, config)
+	messages = history_store.get_messages(principal_id, conversation_id)
+	return {
+		"principal_id": principal_id,
+		"conversation_id": conversation_id,
+		"messages": messages,
+	}
+
 @app.post("/chat")
-async def chat(req: ChatRequest):
-	conv_id = req.conversation_id or "anon"
+async def chat(req: ChatRequest, request: Request):
+	if history_store is None:
+		raise HTTPException(status_code=503, detail="History store not initialized")
+
+	principal_id = resolve_principal(request, config)
+	conv_id = (req.conversation_id or "default").strip() or "default"
 	logger.debug("chat request conv_id=%s message=%s", conv_id, req.message)
+	history = history_store.get_messages(principal_id, conv_id)
 	message = apply_input_rewrites(req.message)
+	effective_message = build_effective_message(message, history, config)
 	tool_events: List[Dict[str, Any]] = []
 
 	preferred_artist_query = ""
@@ -512,8 +624,10 @@ async def chat(req: ChatRequest):
 
 	try:
 		#answer="tienes razón"
-		answer=engine.chat(message, tools=tools, tool_executor=execute_tool_call_with_capture)
-		answer = _normalize_music_operational_answer(message, answer, tool_events)
+		answer=engine.chat(effective_message, tools=tools, tool_executor=execute_tool_call_with_capture)
+		tool_user_message = _extract_tool_user_message(tool_events)
+		if tool_user_message:
+			answer = tool_user_message
 		logger.debug("chat response conv_id=%s answer=%s", conv_id, answer)
 	except HTTPException:
 		raise
@@ -524,7 +638,13 @@ async def chat(req: ChatRequest):
 			detail=f"Engine error: {type(exc).__name__}: {exc}",
 		)
 
-	return {
-		"answer": answer,
-		#"conversation_id": conv_id,
-	}
+	history_store.append_messages(
+		principal_id,
+		conv_id,
+		[
+			{"role": "user", "content": message},
+			{"role": "assistant", "content": answer},
+		],
+	)
+
+	return ChatResponse(answer=answer, conversation_id=conv_id, principal_id=principal_id).model_dump()

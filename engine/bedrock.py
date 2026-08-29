@@ -6,6 +6,7 @@
 import boto3
 from typing import Dict, Any, List, Optional
 import re
+import logging
 from botocore.exceptions import ClientError
 
 # Variables globales
@@ -13,6 +14,7 @@ client = None
 model_id = None
 active_system_prompt = ""
 active_max_steps = 6
+logger = logging.getLogger("aikit.engine.bedrock")
 
 def init(
 	model: str = "amazon.nova-lite-v1:0",
@@ -59,7 +61,7 @@ def init(
 	client = session.client("bedrock-runtime")
 	effective_region = session.region_name or region or "<sin-region>"
 	profile_info = f", profile: {aws_profile}" if aws_profile else ""
-	print(f"✓ Bedrock client ready – model: {model_id}, region: {effective_region}{profile_info}")
+	logger.info("bedrock client ready model=%s region=%s%s", model_id, effective_region, profile_info)
 
 
 def _map_tools_to_bedrock(tools: List[Dict[str, Any]]) -> Dict[str, Any]:

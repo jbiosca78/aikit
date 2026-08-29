@@ -8,6 +8,7 @@
 from typing import Dict, Any, List, Optional
 import ast
 import json
+import logging
 from openai import OpenAI
 
 
@@ -15,6 +16,7 @@ client = None
 model_id = None
 active_system_prompt = ""
 active_max_steps = 6
+logger = logging.getLogger("aikit.engine.ollama")
 
 
 def init(
@@ -33,6 +35,7 @@ def init(
     active_system_prompt = (prompt or "").strip()
     active_max_steps = max(1, int(max_steps))
     client = OpenAI(base_url=url, api_key=apikey)
+    logger.info("ollama client ready model=%s url=%s", model_id, url)
 
 
 def _build_messages(user_message: str) -> List[Dict[str, Any]]:
@@ -113,6 +116,7 @@ def chat(message, tools=None, tool_executor=None, **kwargs):
                     exec_result = tool_executor(tool_name, tool_args)
                     tool_content = exec_result.get("content", "")
                 except Exception as exc:
+                    logger.exception("tool execution failed tool=%s", tool_name)
                     tool_content = f"Tool error: {exc}"
 
                 messages.append({
@@ -132,6 +136,7 @@ def chat(message, tools=None, tool_executor=None, **kwargs):
                 exec_result = tool_executor(tool_name, tool_args)
                 tool_content = exec_result.get("content", "")
             except Exception as exc:
+                logger.exception("textual tool execution failed tool=%s", tool_name)
                 tool_content = f"Tool error: {exc}"
 
             messages.append({"role": "assistant", "content": msg.content or ""})

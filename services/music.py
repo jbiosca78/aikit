@@ -830,6 +830,7 @@ class Service(ServiceContract):
                 "ok": True,
                 "queued_count": len(added),
                 "first_track": selected_tracks[0],
+                "user_message": "Reproduciendo.",
             }
 
         # Por defecto reproducimos varias pistas. Solo dejamos una si el
@@ -866,6 +867,7 @@ class Service(ServiceContract):
             "ok": True,
             "queued_count": len(added),
             "first_track": selected_tracks[0],
+            "user_message": "Reproduciendo.",
         }
 
     def add_query(self, query: str) -> Dict[str, Any]:
@@ -894,6 +896,7 @@ class Service(ServiceContract):
             "ok": True,
             "queued_count": len(added),
             "first_track": tracks[0],
+            "user_message": "Anadido a la cola.",
         }
 
     def play_uri(self, uri: str) -> Dict[str, Any]:
@@ -905,7 +908,7 @@ class Service(ServiceContract):
         if not isinstance(added, list) or not added:
             return {"ok": False, "error": f"Tracklist add failed for URI: {uri}"}
         self._rpc("core.playback.play")
-        return {"ok": True, "uri": uri}
+        return {"ok": True, "uri": uri, "user_message": "Reproduciendo."}
 
     def add_uri(self, uri: str) -> Dict[str, Any]:
         if not self._is_playable_uri(uri):
@@ -914,28 +917,28 @@ class Service(ServiceContract):
         added = self._rpc("core.tracklist.add", {"uris": [uri]})
         if not isinstance(added, list) or not added:
             return {"ok": False, "error": f"Tracklist add failed for URI: {uri}"}
-        return {"ok": True, "uri": uri}
+        return {"ok": True, "uri": uri, "user_message": "Anadido a la cola."}
 
     def pause(self) -> Dict[str, Any]:
         self._rpc("core.playback.pause")
-        return {"ok": True}
+        return {"ok": True, "user_message": "Pausado."}
 
     def resume(self) -> Dict[str, Any]:
         self._rpc("core.playback.play")
-        return {"ok": True}
+        return {"ok": True, "user_message": "Reproduciendo."}
 
     def next_track(self) -> Dict[str, Any]:
         self._rpc("core.playback.next")
-        return {"ok": True}
+        return {"ok": True, "user_message": "Siguiente pista."}
 
     def previous_track(self) -> Dict[str, Any]:
         self._rpc("core.playback.previous")
-        return {"ok": True}
+        return {"ok": True, "user_message": "Pista anterior."}
 
     def set_volume(self, volume: int) -> Dict[str, Any]:
         safe_volume = max(0, min(100, int(volume)))
         self._set_volume(safe_volume)
-        return {"ok": True, "volume": safe_volume}
+        return {"ok": True, "volume": safe_volume, "user_message": f"Volumen al {safe_volume}%."}
 
     def get_status(self) -> Dict[str, Any]:
         state = self._rpc("core.playback.get_state")
