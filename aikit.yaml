@@ -1,0 +1,201 @@
+# CONFIGURACION DE REFERENCIA
+#
+# Este fichero documenta todas las opciones disponibles de aikit y no se usa en ejecucion.
+# Cada integracion mantiene su propio aikit.yaml y lo indica mediante la variable AIKIT_CONFIG;
+# vease examples/demo/aikit.yaml o examples/armarios-mario/backend/aikit.yaml.
+#
+# Las credenciales nunca deben escribirse aqui: se resuelven desde variables de entorno.
+
+log:
+  # Niveles: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  #level: INFO
+  level: DEBUG
+  # Si es "stdout", escribe en stdout (ideal para Docker).
+  # Cualquier otro valor se interpreta como ruta de fichero.
+  #output: stdout
+  output: "aikit.log"
+
+# Historial conversacional (genérico y reutilizable)
+history:
+  # true: guarda y reutiliza contexto entre peticiones
+  enabled: true
+  # backends soportados: memory | json
+  backend: json
+  # ruta usada si backend=json
+  path: "data/history.json"
+  # máximo de mensajes guardados por conversación
+  max_messages_per_conversation: 200
+  # mensajes recientes incluidos como contexto en cada petición
+  context_messages: 12
+
+# Resolución de identidad de usuario para aislar historiales.
+# method: proxy | jwt | cookie (mecanismo unico, agnostico de proveedor)
+auth:
+  method: proxy
+  # si false y no se resuelve identidad => 401
+  allow_anonymous: true
+  anonymous_principal: "anon"
+
+
+  proxy:
+    # la autenticación ocurre fuera de aikit en el proxy/gateway
+    # requisito operativo: el proxy debe eliminar la cabecera si viene del cliente,
+    # y aikit no debe ser accesible directamente
+
+    # cabecera de identidad inyectada
+    userid_header: "x-user-id" # Cabecera con la identidad que inyecta el gateway
+
+    # casos de uso del método proxy:
+    # cloud:
+    #    AWS ALB + Amazon Cognito: el ALB hace el login OIDC e inyecta x-amzn-oidc-identity (y x-amzn-oidc-data con los claims). Es la opción natural aquí, dado que ya usas Bedrock y perfil AWS.
+    #    Amazon API Gateway con authorizer JWT/Lambda: mapea el claim a una cabecera de integración.
+    #    Azure App Service / Container Apps "Easy Auth": inyecta X-MS-CLIENT-PRINCIPAL-NAME.
+    #    Google Cloud IAP: inyecta X-Goog-Authenticated-User-Email.
+    #    Cloudflare Access: valida el JWT Cf-Access-Jwt-Assertion en el borde.
+    # autohospedado:
+    #    Apache httpd con mod_auth_openidc, que expone OIDC_CLAIM_sub y permite propagarlo como cabecera.
+    #    nginx con auth_request + proxy_set_header, o Nginx Ingress en Kubernetes con las anotaciones auth-url/auth-response-headers.
+    #    Traefik con el middleware ForwardAuth (authResponseHeaders).
+    #    Caddy con forward_auth (copy_headers).
+    #    Envoy / Istio con el filtro ext_authz o el RequestAuthentication de Istio.
+    #    Keycloak Gatekeeper / oauth2 sidecar en despliegues con Keycloak.
+    #    oauth2-proxy (el más común en TFG/laboratorio): con --set-xauthrequest pasa X-Auth-Request-User/-Email. Funciona con Google, GitHub, Keycloak, Cognito, Entra ID.
+
+  jwt:
+    # aikit valida la credencial
+
+    # Variable de entorno con la clave HS256
+    secret_env: "AIKIT_JWT_SECRET"
+    # alternativa solo para demos (se usa si la variable de entorno no existe); no versionar claves reales
+    # secret: "jwt-secret-value"
+
+    claim_name: "sub" # claim que identifica al usuario
+    issuer: "" # Si se indica, exige que coincida
+    audience: "" # Si se indica, exige que coincida
+
+    #casos de uso del método jwt:
+    #  Backends propios que emiten sus tokens: Node con jsonwebtoken, Python con PyJWT, Java con jjwt, PHP con firebase/php-jwt, Laravel, Django REST + SimpleJWT... Todos usan HS256 por defecto. Es el caso típico: tu web ya tiene login y aikit valida el mismo token.
+    #  Supabase Auth: firma con HS256 usando el "JWT secret" del proyecto.
+    #  Keycloak: permite configurar por cliente el algoritmo de firma del access token a HS256 (usando el client secret como clave), aunque su valor por defecto es RS256.
+    #  Auth0: en aplicaciones web regulares se puede elegir HS256 (clave = client secret).
+    #  API gateways que emiten tokens propios: Kong, Tyk.
+
+  cookie:
+    # no hay identidad externa, aikit emite la sesión para diferenciar entre usuarios
+    # útil para visitantes anónimos que quieran hacer consultas
+
+    # Nombre de la cookie
+    cookie_name: "aikit_session"
+
+
+    # Cabecera alternativa a la cookie, necesaria cuando la web y aikit se sirven desde origenes distintos (host o puerto).
+    # Si ambos comparten dominio o proxy, conviene usar solo la cookie: al ser HttpOnly no es accesible desde JavaScript,
+    # de modo que un XSS en la web no permitiria robar la sesion.
+    token_header: "x-session-token"
+
+    # Nombre de la variable de entorno que contiene la clave HMAC de firma; nunca sale del core.
+    secret_env: "AIKIT_SESSION_SECRET"
+    # alternativa solo para demos (se usa si la variable de entorno no existe); no versionar claves reales
+    # No emplear en produccion si el fichero se versiona en Git ya que la clave quedaria expuesta
+    #secret: "cookie-secret-value"
+
+    # Validez de la sesion en segundos (86400 = 24 h). Va firmada dentro del token, asi que
+    # al caducar el historial deja de recuperarse y el visitante empieza una conversacion nueva.
+    max_age_seconds: 86400
+
+    # Limita desde que webs se envia la cookie, para que otra pagina no pueda usar
+    # la sesion del visitante sin que el se entere (ataque CSRF).
+    #   strict -> web y core bajo el mismo dominio (caso habitual, tras el mismo proxy)
+    #   none   -> dominios distintos, p.ej. widget embebido en un sitio de terceros;
+    #             obliga a secure: true y a declarar el origen concreto en CORS
+    samesite: "strict"
+
+    # true marca la cookie como Secure y el navegador solo la envia por HTTPS.
+    # debe ser true en produccion; false solo permite el desarrollo local sobre HTTP.
+    secure: false
+
+
+# Reescrituras opcionales de entrada (regex) para añadir contexto por prefijo/palabras.
+# Campos:
+# - name: identificador de regla
+# - pattern: regex de entrada
+# - replacement: reemplazo (admite grupos, p.ej. \1)
+# - flags: IGNORECASE|MULTILINE|DOTALL|ASCII
+# - count: 0=todas, 1=solo primera coincidencia
+rewrites:
+  - name: implicit_music_pause_phrase
+    pattern: '^\s*para\s+(la\s+)?musica\s*$'
+    replacement: 'musica: pausa'
+    flags: IGNORECASE
+    count: 1
+  - name: implicit_music_pause_command
+    pattern: '^\s*(pausa|pausar|deten|deten\s+la\s+musica|stop)\s*$'
+    replacement: 'musica: pausa'
+    flags: IGNORECASE
+    count: 1
+  - name: implicit_music_play
+    pattern: '^\s*pon\s+(.+)$'
+    replacement: 'musica: pon \1'
+    flags: IGNORECASE
+    count: 1
+  - name: implicit_music_add
+    pattern: '^\s*agrega\s+(.+)$'
+    replacement: 'musica: agrega \1'
+    flags: IGNORECASE
+    count: 1
+  - name: spotify_suffix_play
+    pattern: '(?i)\s+en\s+spotify\s*$'
+    replacement: ' (usa source=spotify)'
+    count: 1
+  - name: spotify_suffix_add
+    pattern: '(?i)^(musica:\s*agrega\s+.+?)\s+en\s+spotify\s*$'
+    replacement: '\1 (usa source=spotify)'
+    count: 1
+
+engine:
+  #type: python
+
+  # Prompt de sistema reutilizable para cualquier modelo del engine.
+  # Puedes comentar/descomentar líneas fácilmente.
+  prompt:
+    - "Responde solo para el usuario final en lenguaje natural y directo."
+    - "Habla siempre en segunda persona: usa 'tienes', 'tu', 'te'."
+    - "No uses primera persona para hablar de posesiones o acciones del usuario."
+    - "Empieza directamente por la respuesta, sin introducciones meta ni muletillas."
+    - "Sé breve por defecto: 1-2 frases salvo que el usuario pida más detalle."
+    - "Si la petición es operativa (ejecutar una acción), responde con confirmación muy corta: 3-8 palabras y una sola frase."
+    - "En peticiones operativas no des contexto extra ni explicación salvo que el usuario lo pida explícitamente."
+    - "Si el usuario da una orden imperativa (ej. 'pon ...', 'reproduce ...', 'pausa ...', 'agrega ...'), ejecuta la acción directamente usando herramientas cuando estén disponibles."
+    - "Semántica operativa: 'pon/reproduce' = reemplazar cola y reproducir; 'agrega/añade' = anexar al final sin reemplazar."
+    - "Para peticiones musicales por metadatos (género, año, álbum, artista), usa los argumentos estructurados de las tools: genre, year, album, artist, source."
+    - "No codifiques el género o el año dentro de title si puedes extraerlos como campos separados."
+    - "No pidas confirmación para órdenes operativas normales; solo pide aclaración si faltan datos imprescindibles o hay ambigüedad real entre múltiples opciones equivalentes."
+    - "Si la acción se ejecuta correctamente, responde solo con una confirmación breve y en presente."
+    - "Si la petición es informativa (pedir explicación o contexto), responde con detalle normal y contexto útil."
+    - "Responde solo a lo preguntado: no enumeres datos de otros sitios u objetos no relevantes."
+    - "No menciones herramientas, funciones, tool calls, nombres internos, ni pasos de razonamiento."
+    - "No digas frases como 'he usado la función', 'gracias a la información obtenida' o similares."
+  module: bedrock
+  params:
+    aws_profile: aikit
+    #model: eu.amazon.nova-micro-v1:0                     #  0.04/00.14 máxima velocidad y coste mínimo, para pruebas
+    model: eu.amazon.nova-lite-v1:0                       #  0.06/00.24 muy rápido y estable para flujos operativos
+    #model: eu.anthropic.claude-haiku-4-5-20251001-v1:0   #  1.00/05.00 mejor calidad, latencia razonable
+    #model: eu.anthropic.claude-sonnet-4-6                #  3.00/15.00 tareas dífíciles, mas lento y caro
+    #model: eu.anthropic.claude-opus-4-6-v1               # 15.00/75.00 necesita id de inference profile o habilitarlo?
+    #! model: eu.anthropic.claude-3-5-haiku-20241022-v1:0 # necesita id de inference profile?
+
+  #module: ollama
+  #params:
+    #ollama pull qwen2.5:14b
+    #ollama pull qwen2.5:32b
+    #ollama pull llama3.1:70b
+     #model: llama3.1:8b
+  #  model: eu.amazon.nova-micro-v1:0                   #  0.04/00.14 máxima velocidad y coste mínimo, para pruebas
+
+services:
+  - name: stock
+  - name: music
+  #
+  #- name: users
+  #

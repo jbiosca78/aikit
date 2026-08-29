@@ -1,0 +1,10 @@
+modelo,nombre,precio_eur,ancho_cm,alto_cm,fondo_cm,colores,baldas,peso_max_por_balda_kg,peso_total_max_kg,material,puertas,tipo_puerta,montaje_min,requiere_anclaje_pared,stock,disponibilidad,envio_dias,observaciones
+modelo1,Armario NORDIC 180,599,180,220,60,"roble claro|blanco mate",6,35,260,"tablero melamínico 19 mm",3,abatibles,90,si,27,"entrega 48h","2-4","incluye barra doble y cajonera interna"
+modelo2,Armario FLEX 140 Esquinero,479,140,236,95,"nogal|arena",5,28,190,"tablero melamínico 16 mm",2,correderas,120,si,8,"última semana","4-7","fondo ampliado para aprovechar esquina; requiere montaje con dos operarios"
+modelo3,Armario COMPACT 100,289,100,200,55,"blanco mate|gris grafito",4,25,140,"tablero melamínico 16 mm",2,abatibles,60,si,42,"entrega 48h","2-4","modelo de entrada; ideal para habitación juvenil"
+modelo4,Armario LOFT 240 Correderas,899,240,250,65,"roble oscuro|blanco mate|gris grafito",8,40,380,"tablero melamínico 19 mm",3,correderas,180,si,5,"últimas unidades","5-8","puertas con guía amortiguada; recomendado para techos altos"
+modelo5,Armario BASIC 120,349,120,205,58,"blanco mate|roble claro",5,25,170,"tablero melamínico 16 mm",2,abatibles,70,si,18,"entrega 48h","2-4","configuración estándar con balda superior maletero"
+modelo6,Armario MINI 80 Infantil,219,80,180,50,"blanco mate|verde menta|azul cielo",3,20,95,"tablero melamínico 16 mm",2,abatibles,45,si,60,"entrega 48h","2-4","cantos redondeados y anclaje reforzado para uso infantil"
+modelo7,Armario CLASSIC 160 Madera,1099,160,230,62,"cerezo|nogal",6,45,300,"madera maciza de pino",3,abatibles,150,si,0,"agotado","20-30","fabricación artesanal bajo pedido; acabado barnizado a mano"
+modelo8,Armario SLIM 60 Auxiliar,159,60,190,40,"blanco mate|gris grafito",5,18,80,"tablero melamínico 16 mm",1,abatibles,35,no,75,"entrega 48h","1-3","fondo reducido para pasillos; no requiere anclaje"
+modelo9,Armario PREMIUM 200 Espejo,1450,200,240,68,"roble oscuro|blanco mate",7,45,420,"tablero melamínico 19 mm",4,correderas,200,si,2,"últimas unidades","7-12","dos puertas con espejo integrado e iluminación LED interior"

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Armario CLASSIC 160 Madera">
+<rect width="640" height="480" fill="#f4f6f8"/>
+<ellipse cx="320" cy="446" rx="164" ry="12" fill="#dfe4e8"/>
+<rect x="187.8" y="60.0" width="264.3" height="380.0" rx="4" fill="#8f4033" stroke="#642c23" stroke-width="3"/>
+<rect x="190.8" y="63.0" width="82.1" height="374.0" rx="3" fill="#8f4033" stroke="#642c23" stroke-width="2"/>
+<circle cx="261.9" cy="250.0" r="5" fill="#401c16"/>
+<rect x="278.9" y="63.0" width="82.1" height="374.0" rx="3" fill="#8f4033" stroke="#642c23" stroke-width="2"/>
+<circle cx="350.1" cy="250.0" r="5" fill="#401c16"/>
+<rect x="367.1" y="63.0" width="82.1" height="374.0" rx="3" fill="#8f4033" stroke="#642c23" stroke-width="2"/>
+<circle cx="378.1" cy="250.0" r="5" fill="#401c16"/>
+<rect x="193.8" y="440.0" width="14" height="10" fill="#642c23"/>
+<rect x="432.2" y="440.0" width="14" height="10" fill="#642c23"/>
+<text x="320" y="472" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" fill="#55636d">160 x 230 x 62 cm</text>
+</svg>

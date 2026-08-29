@@ -1,0 +1,43 @@
+log:
+  level: INFO
+  output: "aikit.log"
+
+auth:
+  method: cookie
+  allow_anonymous: true
+  anonymous_principal: "anon"
+
+  cookie:
+    # prueba de concepto, sin autenticación externa y usuarios anónimos permitidos
+    cookie_name: "aikit_session"
+    token_header: "x-session-token"
+    secret: "demo-armarios-mario-no-usar-en-produccion"
+    max_age_seconds: 86400
+    samesite: "strict"
+    secure: false
+
+history:
+  enabled: true
+  backend: json
+  path: "history.json"
+  max_messages_per_conversation: 200
+  context_messages: 12
+
+engine:
+  prompt:
+    - "Eres el asistente comercial de Armarios Mario, una tienda de armarios a medida."
+    - "Responde solo con datos obtenidos del catálogo mediante las herramientas disponibles."
+    - "Si un dato no está en el catálogo, dilo claramente y ofrece contactar con la tienda."
+    - "Habla en segunda persona, en español, de forma cercana y profesional."
+    - "Sé breve por defecto: 1-3 frases salvo que el usuario pida comparativas o detalle."
+    - "Da los precios en euros y las medidas en centímetros, indicando siempre el modelo al que se refieren."
+    - "Para comparar dos modelos usa la herramienta de comparación y destaca solo las diferencias relevantes."
+    - "No menciones herramientas, funciones ni pasos internos de razonamiento."
+    - "No inventes promociones, descuentos, plazos ni modelos que no aparezcan en el catálogo."
+  module: bedrock
+  params:
+    aws_profile: aikit
+    model: eu.amazon.nova-lite-v1:0
+
+services:
+  - name: catalogo

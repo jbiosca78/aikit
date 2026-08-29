@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Armario FLEX 140 Esquinero">
+<rect width="640" height="480" fill="#f4f6f8"/>
+<ellipse cx="320" cy="446" rx="140" ry="12" fill="#dfe4e8"/>
+<rect x="207.3" y="60.0" width="225.4" height="380.0" rx="4" fill="#6b4a2f" stroke="#4a3320" stroke-width="3"/>
+<rect x="210.3" y="63.0" width="106.7" height="374.0" rx="3" fill="#6b4a2f" stroke="#4a3320" stroke-width="2"/>
+<circle cx="306.0" cy="250.0" r="5" fill="#302115"/>
+<rect x="323.0" y="63.0" width="106.7" height="374.0" rx="3" fill="#6b4a2f" stroke="#4a3320" stroke-width="2"/>
+<circle cx="334.0" cy="250.0" r="5" fill="#302115"/>
+<rect x="213.3" y="440.0" width="14" height="10" fill="#4a3320"/>
+<rect x="412.7" y="440.0" width="14" height="10" fill="#4a3320"/>
+<text x="320" y="472" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" fill="#55636d">140 x 236 x 95 cm</text>
+</svg>

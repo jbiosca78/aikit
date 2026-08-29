@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{titulo}}</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="chat-popup.css" />
+</head>
+<body>
+    <header class="site-header">
+        <div class="top-bar">
+            <a class="logo" href="index.html">Armarios <span>Mario</span></a>
+            <nav class="nav-links">
+                <a href="#">Pedidos</a>
+                <a href="#">Soporte</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="detail-layout">
+        <section class="gallery">
+            <img src="img/{{modelo}}.svg" alt="{{nombre}}" />
+        </section>
+
+        <section class="panel">
+            <span class="badge">{{modelo}}</span>
+            <h1>{{nombre}}</h1>
+            <p class="subtitle">{{subtitulo}}</p>
+
+            <div class="price-box">
+                <span class="price">{{precio}} &euro;</span>
+                <span class="price-note">{{disponibilidad}} &middot; envío en {{envio}} días</span>
+            </div>
+
+            <div class="kv">{{especificaciones}}</div>
+
+            <p class="note">{{consejo}}</p>
+
+            <div class="links">
+                <button class="btn btn-primary" type="button">Añadir a la cesta</button>
+                <a class="btn btn-secondary" href="index.html">Volver al catálogo</a>
+            </div>
+        </section>
+    </main>
+    <script src="chat-ia.js"></script>
+</body>
+</html>

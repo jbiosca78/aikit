@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Armario NORDIC 180">
+<rect width="640" height="480" fill="#f4f6f8"/>
+<ellipse cx="320" cy="446" rx="193" ry="12" fill="#dfe4e8"/>
+<rect x="164.5" y="60.0" width="310.9" height="380.0" rx="4" fill="#d8b98a" stroke="#978160" stroke-width="3"/>
+<rect x="167.5" y="63.0" width="97.6" height="374.0" rx="3" fill="#d8b98a" stroke="#978160" stroke-width="2"/>
+<circle cx="254.2" cy="250.0" r="5" fill="#61533e"/>
+<rect x="271.2" y="63.0" width="97.6" height="374.0" rx="3" fill="#d8b98a" stroke="#978160" stroke-width="2"/>
+<circle cx="357.8" cy="250.0" r="5" fill="#61533e"/>
+<rect x="374.8" y="63.0" width="97.6" height="374.0" rx="3" fill="#d8b98a" stroke="#978160" stroke-width="2"/>
+<circle cx="385.8" cy="250.0" r="5" fill="#61533e"/>
+<rect x="170.5" y="440.0" width="14" height="10" fill="#978160"/>
+<rect x="455.5" y="440.0" width="14" height="10" fill="#978160"/>
+<text x="320" y="472" text-anchor="middle" font-family="system-ui, sans-serif" font-size="15" fill="#55636d">180 x 220 x 60 cm</text>
+</svg>

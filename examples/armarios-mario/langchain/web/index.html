@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Armarios Mario | Catálogo de armarios</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="chat.css" />
+</head>
+<body>
+    <header class="site-header">
+        <div class="top-bar">
+            <a class="logo" href="index.html">Armarios <span>Mario</span></a>
+            <nav class="nav-links">
+                <a href="#">Pedidos</a>
+                <a href="#">Soporte</a>
+            </nav>
+        </div>
+    </header>
+
+    <section class="hero">
+        <article class="hero-card">
+            <h1>Armarios pensados para casas reales</h1>
+            <p>
+                Compara medidas, carga por balda y requisitos de espacio antes de comprar.
+                Catálogo de armarios a medida
+                de compatibilidad y recomendarte modelos concretos con enlaces directos.
+            </p>
+        </article>
+        <article class="hero-card metric-grid">
+            <div class="metric">
+                <span class="big">2</span>
+                <span class="small">Modelos de ejemplo</span>
+            </div>
+            <div class="metric">
+                <span class="big">35 kg</span>
+                <span class="small">Máximo por balda</span>
+            </div>
+            <div class="metric">
+                <span class="big">48 h</span>
+                <span class="small">Entrega más rapida</span>
+            </div>
+            <div class="metric">
+                <span class="big">220 cm</span>
+                <span class="small">Altura máxima</span>
+            </div>
+        </article>
+    </section>
+
+    <main class="container">
+        <section class="filters" aria-label="Filtros del catálogo">
+            <div class="field">
+                <label for="search">Buscar por nombre, uso, modelo o color</label>
+                <input id="search" type="text" placeholder="Ej: dormitorio principal, roble, correderas" />
+            </div>
+            <div class="field">
+                <label for="roomWidth">Ancho disponible de habitación (cm)</label>
+                <input id="roomWidth" type="number" min="0" placeholder="Ej: 190" />
+            </div>
+            <div class="field">
+                <label for="roomDepth">Fondo disponible de habitación (cm)</label>
+                <input id="roomDepth" type="number" min="0" placeholder="Ej: 110" />
+            </div>
+            <div class="field">
+                <label for="shelfLoad">Carga mínima por balda (kg)</label>
+                <input id="shelfLoad" type="number" min="0" placeholder="Ej: 30" />
+            </div>
+        </section>
+
+        <p><strong id="catalogCount">0 modelos</strong> disponibles según los filtros</p>
+        <section id="catalog" class="catalog"></section>
+    </main>
+
+    <footer class="footer">
+        Armarios Mario &middot; Fabricación e instalación de armarios a medida
+    </footer>
+
+    <script src="app.js"></script>
+
+    <script src="chat.js"></script>
+</body>
+</html>
