@@ -95,4 +95,5 @@ mediante la variable de entorno `AIKIT_CONFIG`.
 
 ## Licencia
 
-Consúltese el fichero `LICENSE`.
+Licencia MIT.
+Consultar fichero LICENSE para mas detalles.
