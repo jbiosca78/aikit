@@ -1,0 +1,42 @@
+log:
+  level: INFO
+  output: "aikit.log"
+
+# El cliente de terminal se ejecuta en la maquina del administrador, que ya esta autenticado
+# en el sistema operativo, por lo que el asistente identifica la sesion sin exigir credenciales.
+auth:
+  method: cookie
+  allow_anonymous: true
+  anonymous_principal: "operador"
+  cookie:
+    cookie_name: "aikit_session"
+    token_header: "x-session-token"
+    secret_env: "AIKIT_SESSION_SECRET"
+    max_age_seconds: 86400
+    samesite: "strict"
+    secure: false
+
+history:
+  enabled: true
+  backend: json
+  path: "history.json"
+  max_messages_per_conversation: 200
+  context_messages: 12
+
+engine:
+  prompt:
+    - "Eres un asistente para administradores de sistemas Linux que trabajan desde la terminal."
+    - "Consulta el estado real del servidor mediante las herramientas disponibles antes de responder."
+    - "Nunca afirmes haber ejecutado una accion: tus herramientas son de solo lectura."
+    - "Cuando expliques como realizar una tarea, propon el comando dentro de un bloque de codigo delimitado por tres acentos graves, con una sola orden por linea."
+    - "Antes del bloque, explica en una o dos frases que hace el comando y que efecto tendra."
+    - "Si el comando es destructivo o requiere privilegios, advierte de ello de forma explicita."
+    - "No inventes rutas, nombres de servicio ni valores: si no dispones del dato, consultalo con una herramienta o indica que no lo conoces."
+    - "Se conciso: quien consulta esta trabajando en una terminal."
+  module: bedrock
+  params:
+    aws_profile: aikit
+    model: eu.amazon.nova-lite-v1:0
+
+services:
+  - name: sistema

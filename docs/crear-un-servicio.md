@@ -21,8 +21,8 @@ from aikit.core.service_contract import ServiceContract, MethodSchema
 
 
 class Service(ServiceContract):
-    name = "horarios"
-    description = "Horario de atención al público de la tienda."
+    name = "pedidos"
+    description = "Consulta del estado de los pedidos de un cliente."
 
     def list_methods(self) -> list[MethodSchema]:
         ...
@@ -55,55 +55,55 @@ from typing import Any, Dict, List
 
 from aikit.core.service_contract import ServiceContract, MethodSchema
 
-HORARIOS = {
-    "lunes": "09:00-14:00 y 17:00-20:00",
-    "martes": "09:00-14:00 y 17:00-20:00",
-    "miercoles": "09:00-14:00 y 17:00-20:00",
-    "jueves": "09:00-14:00 y 17:00-20:00",
-    "viernes": "09:00-14:00 y 17:00-20:00",
-    "sabado": "10:00-14:00",
-    "domingo": "cerrado",
+PEDIDOS = {
+    "A-1024": {"estado": "en reparto", "entrega_estimada": "2026-03-04", "transportista": "SEUR"},
+    "A-1025": {"estado": "en preparacion", "entrega_estimada": "2026-03-09", "transportista": None},
+    "A-1026": {"estado": "entregado", "entrega_estimada": "2026-02-27", "transportista": "MRW"},
 }
 
 
 class Service(ServiceContract):
-    name = "horarios"
-    description = "Horario de atención al público de la tienda."
+    name = "pedidos"
+    description = "Consulta del estado de los pedidos de un cliente."
 
     def list_methods(self) -> List[MethodSchema]:
         return [
             MethodSchema(
-                name="get_schedule",
+                name="get_order",
                 description=(
-                    "Devuelve el horario de apertura de un día concreto. "
-                    "Úsalo cuando pregunten a qué hora abre o cierra la tienda."
+                    "Devuelve el estado de un pedido a partir de su referencia. "
+                    "Úsalo cuando pregunten por un pedido concreto o por su fecha de entrega."
                 ),
                 params_schema={
-                    "day": {
+                    "reference": {
                         "type": "string",
-                        "description": "Día de la semana en minúsculas, por ejemplo 'sabado'.",
+                        "description": "Referencia del pedido, por ejemplo 'A-1024'.",
                     }
                 },
-                required_params=["day"],
+                required_params=["reference"],
                 returns_schema={"type": "object", "additionalProperties": True},
             ),
             MethodSchema(
-                name="get_week_schedule",
-                description="Devuelve el horario completo de la semana.",
+                name="list_pending_orders",
+                description="Devuelve los pedidos que aún no se han entregado.",
                 params_schema={},
                 required_params=[],
-                returns_schema={"type": "object", "additionalProperties": True},
+                returns_schema={"type": "array", "items": {"type": "object"}},
             ),
         ]
 
-    def get_schedule(self, day: str) -> Dict[str, Any]:
-        clave = day.strip().lower()
-        if clave not in HORARIOS:
-            return {"encontrado": False, "dia": day}
-        return {"encontrado": True, "dia": clave, "horario": HORARIOS[clave]}
+    def get_order(self, reference: str) -> Dict[str, Any]:
+        clave = reference.strip().upper()
+        if clave not in PEDIDOS:
+            return {"encontrado": False, "referencia": reference}
+        return {"encontrado": True, "referencia": clave, **PEDIDOS[clave]}
 
-    def get_week_schedule(self) -> Dict[str, str]:
-        return dict(HORARIOS)
+    def list_pending_orders(self) -> List[Dict[str, Any]]:
+        return [
+            {"referencia": ref, **datos}
+            for ref, datos in PEDIDOS.items()
+            if datos["estado"] != "entregado"
+        ]
 ```
 
 ## Registrar el servicio
@@ -112,17 +112,17 @@ En la sección `services` del `aikit.yaml` de la integración:
 
 ```yaml
 services:
-  - name: horarios
+  - name: pedidos
 ```
 
-Por convención, `name: horarios` carga el módulo `services.horarios` y su clase `Service`. Si el
+Por convención, `name: pedidos` carga el módulo `services.pedidos` y su clase `Service`. Si el
 módulo o la clase tienen otro nombre, se indican de forma explícita:
 
 ```yaml
 services:
-  - name: horarios
-    module: mi_paquete.horarios
-    class: HorariosService
+  - name: pedidos
+    module: mi_paquete.pedidos
+    class: PedidosService
 ```
 
 Al arrancar, el núcleo importa el módulo, comprueba que cumple el contrato, consulta
@@ -131,7 +131,7 @@ línea por cada servicio cargado.
 
 ## Cómo se presentan al modelo
 
-Cada operación se publica con el nombre `servicio__metodo`, por ejemplo `horarios__get_schedule`.
+Cada operación se publica con el nombre `servicio__metodo`, por ejemplo `pedidos__get_order`.
 El prefijo evita colisiones entre servicios distintos y permite al núcleo enrutar la invocación.
 
 Cuando el modelo solicita una herramienta, el núcleo localiza el servicio, ejecuta el método con
@@ -157,7 +157,7 @@ Con el servicio registrado y el proceso en marcha:
 ```bash
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
-  -d '{"message": "a que hora abris los sabados?"}'
+  -d '{"message": "como va mi pedido A-1024?"}'
 ```
 
 También puede consultarse `GET /readiness`, que enumera los servicios cargados y el número total

@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""Cliente de terminal para AiKit.
+
+Interfaz de linea de ordenes para consultar al asistente desde una sesion de shell,
+pensada para tareas de administracion de sistemas.
+
+Modos de uso:
+
+    aikit-shell                             sesion interactiva
+    aikit-shell "como listo los puertos abiertos?"
+    journalctl -u nginx | aikit-shell       analiza la salida recibida por la entrada estandar
+    journalctl -u nginx | aikit-shell "resume los errores"
+
+Los comandos que sugiere el asistente se muestran resaltados y se guardan para poder
+copiarlos, pero nunca se ejecutan: la decision de ejecutarlos corresponde siempre al usuario.
+La conversacion se conserva entre invocaciones, de modo que pueden encadenarse preguntas.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+import uuid
+from pathlib import Path
+
+API_URL = os.getenv("AIKIT_URL", "http://localhost:8000")
+STATE_PATH = Path(os.getenv("AIKIT_SHELL_STATE", Path.home() / ".config" / "aikit" / "shell.json"))
+COMMAND_PATH = STATE_PATH.parent / "ultimo-comando"
+MAX_STDIN_CHARS = 8000
+
+BLOQUE_RE = re.compile(r"```(?:bash|sh|shell|console)?\n(.*?)```", re.DOTALL)
+
+VERDE = "\033[32m"
+GRIS = "\033[90m"
+ROJO = "\033[31m"
+CIAN = "\033[36m"
+FIN = "\033[0m"
+
+
+def color(texto: str, codigo: str) -> str:
+	return f"{codigo}{texto}{FIN}" if sys.stdout.isatty() else texto
+
+
+def leer_estado() -> dict:
+	try:
+		return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+	except (OSError, json.JSONDecodeError):
+		return {}
+
+
+def guardar_estado(estado: dict) -> None:
+	STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+	STATE_PATH.write_text(json.dumps(estado), encoding="utf-8")
+	STATE_PATH.chmod(0o600)
+
+
+def peticion(ruta: str, cuerpo: dict | None, token: str = "") -> dict:
+	datos = json.dumps(cuerpo).encode("utf-8") if cuerpo is not None else b""
+	req = urllib.request.Request(f"{API_URL}{ruta}", data=datos, method="POST")
+	req.add_header("Content-Type", "application/json")
+	if token:
+		req.add_header("x-session-token", token)
+	with urllib.request.urlopen(req, timeout=120) as resp:
+		return json.loads(resp.read().decode("utf-8"))
+
+
+def obtener_sesion(estado: dict) -> str:
+	if estado.get("token"):
+		return estado["token"]
+	try:
+		respuesta = peticion("/session", None)
+	except urllib.error.HTTPError:
+		return ""
+	estado["token"] = respuesta.get("token", "")
+	guardar_estado(estado)
+	return estado["token"]
+
+
+def preguntar(mensaje: str, estado: dict) -> str:
+	respuesta = peticion(
+		"/chat",
+		{"conversation_id": estado["conversation_id"], "message": mensaje},
+		obtener_sesion(estado),
+	)
+	return respuesta.get("answer", "")
+
+
+def componer(pregunta: str, entrada: str) -> str:
+	if not entrada:
+		return pregunta
+	recorte = entrada[-MAX_STDIN_CHARS:]
+	instruccion = pregunta or "Analiza esta salida de terminal y explica que ocurre."
+	return f"{instruccion}\n\nSalida recibida:\n```\n{recorte.strip()}\n```"
+
+
+def extraer_comandos(respuesta: str) -> list[str]:
+	bloques = BLOQUE_RE.findall(respuesta)
+	return [linea.strip() for bloque in bloques for linea in bloque.strip().split("\n") if linea.strip()]
+
+
+def copiar_al_portapapeles(texto: str) -> bool:
+	for orden in (["wl-copy"], ["xclip", "-selection", "clipboard"], ["pbcopy"]):
+		if shutil.which(orden[0]):
+			try:
+				subprocess.run(orden, input=texto.encode("utf-8"), check=True)
+				return True
+			except subprocess.SubprocessError:
+				return False
+	return False
+
+
+def mostrar(respuesta: str, copiar: bool) -> None:
+	comandos = extraer_comandos(respuesta)
+	texto = re.sub(r"\n{3,}", "\n\n", BLOQUE_RE.sub("", respuesta)).strip()
+	print(texto)
+
+	if not comandos:
+		return
+
+	print()
+	print(color("Comando sugerido:" if len(comandos) == 1 else "Comandos sugeridos:", GRIS))
+	for comando in comandos:
+		print("  " + color(comando, CIAN))
+
+	# El comando se guarda para poder revisarlo o copiarlo; su ejecucion queda en manos del usuario.
+	COMMAND_PATH.parent.mkdir(parents=True, exist_ok=True)
+	COMMAND_PATH.write_text("\n".join(comandos) + "\n", encoding="utf-8")
+
+	if copiar and copiar_al_portapapeles("\n".join(comandos)):
+		print(color("Copiado al portapapeles.", GRIS))
+
+
+def interactivo(estado: dict, copiar: bool) -> int:
+	print(color(f"AiKit shell. Conectado a {API_URL}. Escribe 'salir' para terminar.", GRIS))
+	while True:
+		try:
+			pregunta = input(color("aikit> ", VERDE)).strip()
+		except (EOFError, KeyboardInterrupt):
+			print()
+			return 0
+		if not pregunta:
+			continue
+		if pregunta in ("salir", "exit", "quit"):
+			return 0
+		if pregunta == "nueva":
+			estado["conversation_id"] = f"shell-{uuid.uuid4().hex[:12]}"
+			guardar_estado(estado)
+			print(color("Conversacion reiniciada.", GRIS))
+			continue
+		try:
+			mostrar(preguntar(pregunta, estado), copiar)
+			print()
+		except urllib.error.URLError as exc:
+			print(color(f"No se pudo conectar con {API_URL}: {exc}", ROJO), file=sys.stderr)
+			return 1
+
+
+def main() -> int:
+	parser = argparse.ArgumentParser(description="Cliente de terminal para AiKit.")
+	parser.add_argument("pregunta", nargs="*", help="consulta; si se omite, abre sesion interactiva")
+	parser.add_argument("--nueva", action="store_true", help="inicia una conversacion nueva")
+	parser.add_argument("-c", "--copiar", action="store_true", help="copia al portapapeles el comando sugerido")
+	parser.add_argument("--ultimo", action="store_true", help="muestra el ultimo comando sugerido")
+	args = parser.parse_args()
+
+	if args.ultimo:
+		if COMMAND_PATH.exists():
+			print(COMMAND_PATH.read_text(encoding="utf-8").strip())
+			return 0
+		print(color("No hay ningun comando sugerido todavia.", GRIS), file=sys.stderr)
+		return 1
+
+	estado = leer_estado()
+	if args.nueva or "conversation_id" not in estado:
+		estado["conversation_id"] = f"shell-{uuid.uuid4().hex[:12]}"
+		guardar_estado(estado)
+
+	entrada = "" if sys.stdin.isatty() else sys.stdin.read()
+	pregunta = " ".join(args.pregunta)
+
+	if not pregunta and not entrada:
+		return interactivo(estado, args.copiar)
+
+	try:
+		mostrar(preguntar(componer(pregunta, entrada), estado), args.copiar)
+	except urllib.error.URLError as exc:
+		print(color(f"No se pudo conectar con {API_URL}: {exc}", ROJO), file=sys.stderr)
+		return 1
+	return 0
+
+
+if __name__ == "__main__":
+	sys.exit(main())
