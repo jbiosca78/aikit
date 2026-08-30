@@ -15,6 +15,12 @@ log:
   #output: stdout
   output: "aikit.log"
 
+# Variables de entorno útiles del núcleo:
+# - AIKIT_CONFIG: ruta de este fichero en cada integración.
+# - AIKIT_CORS_ORIGINS: orígenes permitidos por CORS, separados por comas. Por defecto "*".
+# - AIKIT_CORS_ALLOW_CREDENTIALS: activa credenciales CORS si los orígenes son explícitos.
+# - AIKIT_TRACEBACK_SHOW_LOCALS: muestra variables locales en trazas si vale 1/true/yes.
+
 # Historial conversacional (genérico y reutilizable)
 history:
   # true: guarda y reutiliza contexto entre peticiones

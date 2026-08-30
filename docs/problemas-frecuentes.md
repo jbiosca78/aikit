@@ -68,6 +68,20 @@ resuelve como el principal anónimo, que es común a todos. El componente de int
 sesión automáticamente; en integraciones propias hay que invocar `POST /session` y enviar el
 identificador recibido.
 
+## El navegador bloquea la petición por CORS
+
+Por defecto AiKit permite cualquier origen (`AIKIT_CORS_ORIGINS=*`), pero en ese modo no habilita
+credenciales CORS. Si la web y el backend están en orígenes distintos y quieres usar cookies o
+credenciales, declara el origen exacto:
+
+```bash
+export AIKIT_CORS_ORIGINS=https://mi-web.example
+export AIKIT_CORS_ALLOW_CREDENTIALS=true
+```
+
+Evita combinar credenciales con `*`; algunos navegadores lo rechazan y, además, es una mala base
+para producción.
+
 ## Las sesiones se pierden al reiniciar
 
 Los guiones de arranque de los ejemplos generan una clave de firma aleatoria si no existe la

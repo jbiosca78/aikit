@@ -5,6 +5,7 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, Dict, List
 import json
+import os
 
 
 Message = Dict[str, Any]
@@ -84,7 +85,9 @@ class JsonFileHistoryStore(HistoryStore):
 
     def _write_all(self, data: Dict[str, Dict[str, List[Message]]]) -> None:
         with self._lock:
-            self._path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            tmp_path = self._path.with_name(f"{self._path.name}.tmp")
+            tmp_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp_path, self._path)
 
     def list_conversations(self, principal_id: str) -> List[str]:
         data = self._read_all()
@@ -106,27 +109,28 @@ class JsonFileHistoryStore(HistoryStore):
     def append_messages(self, principal_id: str, conversation_id: str, messages: List[Message]) -> None:
         if not messages:
             return
-        data = self._read_all()
-        by_user = data.setdefault(principal_id, {})
-        if not isinstance(by_user, dict):
-            by_user = {}
-            data[principal_id] = by_user
-        conv = by_user.setdefault(conversation_id, [])
-        if not isinstance(conv, list):
-            conv = []
-            by_user[conversation_id] = conv
+        with self._lock:
+            data = self._read_all()
+            by_user = data.setdefault(principal_id, {})
+            if not isinstance(by_user, dict):
+                by_user = {}
+                data[principal_id] = by_user
+            conv = by_user.setdefault(conversation_id, [])
+            if not isinstance(conv, list):
+                conv = []
+                by_user[conversation_id] = conv
 
-        for msg in messages:
-            role = _safe_text(msg.get("role", ""))
-            content = _safe_text(msg.get("content", ""))
-            if not role:
-                continue
-            conv.append({"role": role, "content": content})
+            for msg in messages:
+                role = _safe_text(msg.get("role", ""))
+                content = _safe_text(msg.get("content", ""))
+                if not role:
+                    continue
+                conv.append({"role": role, "content": content})
 
-        if len(conv) > self._max_messages:
-            del conv[: len(conv) - self._max_messages]
+            if len(conv) > self._max_messages:
+                del conv[: len(conv) - self._max_messages]
 
-        self._write_all(data)
+            self._write_all(data)
 
 
 def build_history_store(cfg: Dict[str, Any]) -> HistoryStore:

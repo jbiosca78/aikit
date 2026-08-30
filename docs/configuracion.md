@@ -151,3 +151,10 @@ rewrites:
 | `AIKIT_CONFIG` | Ruta del fichero de configuración a utilizar |
 | `AIKIT_SESSION_SECRET` | Clave de firma de las sesiones, en el modo `cookie` |
 | `AIKIT_JWT_SECRET` | Clave de verificación de testigos, en el modo `jwt` |
+| `AIKIT_CORS_ORIGINS` | Orígenes permitidos por CORS, separados por comas. Por defecto `*` |
+| `AIKIT_CORS_ALLOW_CREDENTIALS` | Permite credenciales CORS cuando los orígenes son explícitos. Por defecto `true` |
+| `AIKIT_TRACEBACK_SHOW_LOCALS` | Muestra variables locales en trazas de error si vale `1`, `true` o `yes` |
+
+Si `AIKIT_CORS_ORIGINS` queda como `*`, AiKit desactiva `allow_credentials` aunque la variable
+`AIKIT_CORS_ALLOW_CREDENTIALS` esté activa. Para usar cookies entre orígenes, declara el origen
+concreto, por ejemplo `https://mi-web.example`.

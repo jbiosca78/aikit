@@ -84,6 +84,8 @@ class Service(ServiceContract):
         return user.dict()
 
     def add_credits(self, user_id: int, amount: int) -> Optional[Dict]:
+        if amount <= 0 or amount > 1000:
+            return {"error": "amount debe estar entre 1 y 1000", "user_id": user_id, "amount": amount}
         user = self._users.get(user_id)
         if not user:
             return None

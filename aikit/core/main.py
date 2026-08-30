@@ -30,7 +30,7 @@ from aikit.core.auth import (
 #import colored_traceback
 #colored_traceback.add_hook()
 from rich.traceback import install
-install(show_locals=True) # show_locals muestra variables locales en cada frame
+install(show_locals=os.getenv("AIKIT_TRACEBACK_SHOW_LOCALS", "").lower() in {"1", "true", "yes"})
 
 
 # Variable global para almacenar el módulo cargado
@@ -384,11 +384,25 @@ async def init(app: FastAPI):
 
 app = FastAPI(lifespan=init)
 
+
+def _cors_origins_from_env() -> List[str]:
+	raw = os.getenv("AIKIT_CORS_ORIGINS", "*").strip()
+	return [origin.strip() for origin in raw.split(",") if origin.strip()] or ["*"]
+
+
+def _cors_credentials_from_env(origins: List[str]) -> bool:
+	if "*" in origins:
+		return False
+	return os.getenv("AIKIT_CORS_ALLOW_CREDENTIALS", "true").lower() in {"1", "true", "yes"}
+
+
+cors_origins = _cors_origins_from_env()
+
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción, especifica los orígenes permitidos
-    allow_credentials=True,
+	allow_origins=cors_origins,
+	allow_credentials=_cors_credentials_from_env(cors_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
