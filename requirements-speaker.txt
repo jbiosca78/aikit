@@ -1,4 +1,0 @@
-speechbrain
-# Install torch/torchaudio with the build that matches your platform.
-# Example (CPU):
-#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
