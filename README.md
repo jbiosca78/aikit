@@ -1,12 +1,25 @@
 # AiKit
 
-_Framework_ modular para incorporar asistentes conversacionales basados en IA generativa a
-aplicaciones web ya existentes, con bajo acoplamiento y configuración declarativa.
+AiKit es un _framework_ ligero para añadir asistentes conversacionales con IA generativa a
+aplicaciones que ya existen. Está pensado para casos en los que no quieres rehacer tu
+producto alrededor de una herramienta de IA, sino conectar tu lógica de negocio actual con un
+chat, un motor de modelo y un poco de configuración.
 
-La idea central es que la aplicación no tenga que implementar la conexión con el proveedor de
-modelo, el ciclo de invocación de herramientas, la identificación del usuario ni la persistencia
-del historial. Solo aporta su lógica de negocio, expuesta como un servicio, y decide el resto
-mediante un fichero de configuración.
+La aplicación aporta sus servicios; AiKit se ocupa de la conversación, la llamada al proveedor de
+modelo, la invocación de herramientas, la identificación del usuario y el historial. El objetivo
+es que integrar IA sea más parecido a añadir una pieza a tu sistema que a empezar otro proyecto
+desde cero.
+
+Con AiKit puedes:
+
+- Exponer funciones de tu aplicación como herramientas que el modelo puede usar.
+- Cambiar de motor de IA desde configuración.
+- Incrustar un chat web sin acoplarlo a un _frontend_ concreto.
+- Mantener sesiones e historial sin escribir esa infraestructura cada vez.
+
+Si quieres verlo funcionando antes de entrar en la arquitectura, empieza por
+[`examples/demo`](examples/demo/README.md) o por el caso completo de
+[`examples/armarios-mario`](examples/armarios-mario/README.md).
 
 ## Arquitectura
 
@@ -31,8 +44,8 @@ ambos se conectan a través de contratos explícitos.
 ## Requisitos
 
 - Python 3.10 o superior.
-- Las dependencias de `requirements.txt`.
-- Credenciales del proveedor de modelo elegido. Con Amazon Bedrock basta un perfil de AWS
+- Dependencias Python de `requirements.txt`.
+- Credenciales del proveedor de modelo de IA elegido. Con Amazon Bedrock basta un perfil de AWS
   configurado; con Ollama, el servicio ejecutándose en local.
 
 ```bash
@@ -43,15 +56,15 @@ pip install -r requirements.txt
 
 ## Puesta en marcha
 
-El modo más rápido de ver el sistema en funcionamiento es el ejemplo `demo`, que incluye varios
-servicios de dominio:
+La forma más rápida de probarlo es arrancar el ejemplo `demo`, que ya trae varios servicios de
+dominio preparados:
 
 ```bash
 cd examples/demo
 ./run.sh
 ```
 
-El servicio queda disponible en el puerto 8000. Para comprobarlo:
+El servicio queda disponible en el puerto 8000. Para comprobar que responde:
 
 ```bash
 curl -X POST http://localhost:8000/chat \
@@ -83,11 +96,10 @@ dispone de su propio `README.md`.
 - [Crear un conector de motor](docs/crear-un-motor.md): cómo añadir soporte para otro proveedor.
 - [Problemas frecuentes](docs/problemas-frecuentes.md): errores habituales y su solución.
 
-Los ejemplos disponen de su propia documentación: [demo](examples/demo/README.md), una
-integración mínima con varios servicios;
-[armarios-mario](examples/armarios-mario/README.md), un caso completo con interfaz web; y
-[sysadmin](examples/sysadmin/README.md), un asistente de administración de sistemas con
-interfaz de terminal.
+Cada ejemplo tiene además su propia documentación: [demo](examples/demo/README.md), una
+integración mínima con varios servicios; [armarios-mario](examples/armarios-mario/README.md),
+un caso completo con interfaz web; y [sysadmin](examples/sysadmin/README.md), un asistente de
+administración de sistemas con interfaz de terminal.
 
 El fichero `aikit.yaml` de la raíz documenta todas las opciones disponibles y sirve como
 referencia; no se utiliza en ejecución, ya que cada integración mantiene el suyo y lo indica
@@ -96,4 +108,4 @@ mediante la variable de entorno `AIKIT_CONFIG`.
 ## Licencia
 
 Licencia MIT.
-Consultar fichero LICENSE para mas detalles.
+Consultar fichero `LICENSE` para más detalles.

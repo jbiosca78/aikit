@@ -1,10 +1,11 @@
 # Crear un servicio de dominio
 
-Un servicio expone la lógica de negocio de la aplicación al asistente. Cada uno de sus métodos
-se traduce en una herramienta que el modelo puede invocar cuando lo considere necesario.
+Un servicio es la forma de enseñarle al asistente qué sabe hacer tu aplicación. Cada método que
+declares se convierte en una herramienta que el modelo puede llamar cuando la conversación lo
+necesite.
 
-Añadir un servicio no requiere modificar el núcleo: basta con crear un fichero y declararlo en
-la configuración.
+No hay que tocar el núcleo de AiKit para añadir uno. Normalmente basta con crear un fichero en
+`services/` y registrarlo en la configuración.
 
 ## Resumen
 
@@ -28,8 +29,9 @@ class Service(ServiceContract):
         ...
 ```
 
-La clase debe llamarse `Service`, salvo que se indique otro nombre en la configuración. Los
-atributos `name` y `description` identifican el servicio y ayudan al modelo a situarlo.
+La clase debe llamarse `Service`, salvo que indiques otro nombre en la configuración. Los
+atributos `name` y `description` no son decoración: ayudan al modelo a entender cuándo tiene
+sentido usar ese servicio.
 
 ## Declarar las operaciones
 
@@ -44,9 +46,8 @@ atributos `name` y `description` identifican el servicio y ayudan al modelo a si
 | `required_params` | Parámetros obligatorios. Si se omite, se consideran obligatorios todos |
 | `returns_schema` | Estructura del valor devuelto |
 
-La descripción es la parte más importante: es lo único que el modelo tiene para decidir si
-invoca la operación. Conviene redactarla indicando en qué situación resulta útil, no solo qué
-hace.
+La descripción es la parte que más conviene cuidar. El modelo la usa para decidir si llama a esa
+operación, así que no basta con decir qué devuelve: explica también cuándo debería usarse.
 
 ## Ejemplo completo
 
@@ -126,8 +127,8 @@ services:
 ```
 
 Al arrancar, el núcleo importa el módulo, comprueba que cumple el contrato, consulta
-`list_methods()` y publica las herramientas resultantes. En los registros de arranque aparece una
-línea por cada servicio cargado.
+`list_methods()` y publica las herramientas resultantes. Si todo va bien, en los registros de
+arranque aparece una línea por cada servicio cargado.
 
 ## Cómo se presentan al modelo
 
@@ -152,7 +153,8 @@ la respuesta final apoyándose en esos datos.
 
 ## Comprobación
 
-Con el servicio registrado y el proceso en marcha:
+Con el servicio registrado y el proceso en marcha, lo más directo es preguntarle al asistente
+algo que obligue a usarlo:
 
 ```bash
 curl -X POST http://localhost:8000/chat \

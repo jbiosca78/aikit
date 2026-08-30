@@ -1,10 +1,10 @@
 # Crear un conector de motor
 
-Un motor conecta el núcleo con un proveedor de modelo. Añadir soporte para uno nuevo consiste en
-escribir un módulo en `aikit/engine/` que exponga dos funciones.
+Un motor es el adaptador entre AiKit y un proveedor de modelo. Para añadir uno nuevo hay que
+crear un módulo en `aikit/engine/` con dos funciones: una de inicialización y otra de chat.
 
-El punto de partida más cómodo es copiar `aikit/engine/template.py`, o el conector existente más
-parecido al proveedor de destino.
+Lo más práctico es empezar copiando `aikit/engine/template.py` o el conector que más se parezca
+al proveedor que quieras integrar.
 
 ## El contrato
 
@@ -17,15 +17,15 @@ def chat(message, tools=None, tool_executor=None, **kwargs) -> str:
     """Envía el mensaje al modelo y devuelve la respuesta final en texto."""
 ```
 
-El núcleo comprueba durante el arranque que ambas funciones existen y que `chat` acepta al menos
-un argumento. Si no se cumple, el proceso no arranca.
+Durante el arranque, el núcleo comprueba que ambas funciones existen y que `chat` acepta al menos
+un argumento. Si algo no encaja, el proceso falla pronto, antes de empezar a servir peticiones.
 
 ## Responsabilidades del conector
 
 `init()` prepara el cliente del proveedor con las credenciales y el modelo indicados en la
 configuración, y guarda el prompt de sistema, que llega en el parámetro `prompt`.
 
-`chat()` concentra la parte específica de cada proveedor:
+`chat()` concentra lo que cambia de un proveedor a otro:
 
 - Traducir la lista `tools`, en formato neutro, al formato de herramientas del proveedor.
 - Enviar el mensaje junto con el prompt de sistema.
@@ -34,8 +34,9 @@ configuración, y guarda el prompt de sistema, que llega en el parámetro `promp
 - Repetir mientras el modelo siga solicitando herramientas, con un límite de pasos.
 - Devolver la respuesta final como texto.
 
-El conector nunca ejecuta las herramientas por su cuenta: siempre delega en `tool_executor`, que
-proporciona el núcleo. De este modo la ejecución queda centralizada y es trazable.
+El conector no debe ejecutar herramientas por su cuenta. Siempre debe delegar en `tool_executor`,
+que lo proporciona el núcleo. Así la ejecución queda en un único sitio y es más fácil seguir qué
+ha pasado.
 
 ## Formato de las herramientas
 
@@ -61,8 +62,8 @@ incluyen una función auxiliar para esa conversión que puede servir de referenc
 
 ## Registro
 
-No hace falta registrar el conector en ningún sitio: basta con indicar el nombre del fichero en
-la configuración.
+No hay un registro aparte de conectores. Basta con indicar el nombre del fichero en la
+configuración.
 
 ```yaml
 engine:

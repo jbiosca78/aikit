@@ -1,8 +1,8 @@
 # Configuración
 
-Cada integración mantiene su propio `aikit.yaml` y lo indica mediante la variable de entorno
-`AIKIT_CONFIG`. El fichero de la raíz del repositorio documenta todas las opciones y sirve como
-referencia comentada.
+Cada integración tiene su propio `aikit.yaml`. AiKit sabe cuál debe usar mediante la variable de
+entorno `AIKIT_CONFIG`. El fichero de la raíz del repositorio funciona como referencia comentada:
+no hace falta usarlo tal cual, pero viene bien para ver todas las opciones disponibles.
 
 ```bash
 export AIKIT_CONFIG=/ruta/a/mi-proyecto/aikit.yaml
@@ -24,7 +24,7 @@ El nivel `DEBUG` registra las invocaciones de herramientas con sus argumentos, l
 
 ### engine
 
-Selecciona el proveedor de modelo y sus parámetros.
+Aquí se elige qué motor de IA se va a usar y con qué parámetros.
 
 ```yaml
 engine:
@@ -37,9 +37,10 @@ engine:
     - "No menciones herramientas ni pasos internos."
 ```
 
-`params` se entrega tal cual a la función `init()` del conector, por lo que sus claves dependen
-del proveedor. El bloque `prompt` admite una cadena o una lista de líneas, que se concatenan; al
-residir en la configuración, el comportamiento del asistente puede ajustarse sin tocar código.
+`params` se pasa tal cual a la función `init()` del conector, así que sus claves dependen del
+proveedor. El bloque `prompt` puede ser una cadena o una lista de líneas, que AiKit une al
+arrancar. Al estar en configuración, puedes ajustar el comportamiento del asistente sin tocar
+código.
 
 Cambiar de proveedor consiste en modificar `module` y `params`.
 
@@ -60,8 +61,8 @@ Por convención, `name` determina el módulo `services.<name>` y la clase `Servi
 
 ### auth
 
-Determina cómo se identifica al usuario, lo que permite aislar los historiales. El parámetro
-`method` selecciona un único mecanismo.
+Define cómo se identifica al usuario para poder separar historiales. El parámetro `method`
+elige un único mecanismo.
 
 ```yaml
 auth:
@@ -72,8 +73,8 @@ auth:
 
 Con `allow_anonymous: false`, las peticiones sin identidad reciben un error 401.
 
-**`method: proxy`**. Un intermediario externo autentica al usuario e inyecta su identidad en una
-cabecera. AiKit se limita a leerla.
+**`method: proxy`**. Un proxy o servidor externo autentica al usuario y añade su identidad en
+una cabecera. AiKit solo la lee.
 
 ```yaml
   proxy:
@@ -95,7 +96,7 @@ junto con su vigencia y, opcionalmente, emisor y audiencia.
 ```
 
 **`method: cookie`**. No hay identidad externa: el propio núcleo emite en `POST /session` una
-sesión anónima firmada, cuyo identificador el cliente no puede falsificar.
+sesión anónima firmada. El cliente conserva el identificador, pero no puede inventarse uno válido.
 
 ```yaml
   cookie:
@@ -125,13 +126,14 @@ history:
   context_messages: 12
 ```
 
-`context_messages` determina cuántos mensajes recientes se envían como contexto en cada petición.
-Aumentarlo mejora la continuidad de la conversación y encarece cada llamada al modelo.
+`context_messages` indica cuántos mensajes recientes se reenvían como contexto en cada petición.
+Subirlo puede mejorar la continuidad de la conversación, pero también aumenta el coste de cada
+llamada al modelo.
 
 ### rewrites
 
-Reescrituras opcionales del mensaje de entrada mediante expresiones regulares, útiles para
-normalizar formas de expresión frecuentes antes de enviarlas al modelo.
+Permite reescribir mensajes de entrada con expresiones regulares antes de mandarlos al modelo.
+Es útil para atajos, comandos frecuentes o formas de hablar que quieras normalizar.
 
 ```yaml
 rewrites:

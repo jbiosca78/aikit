@@ -1,11 +1,11 @@
 # Asistente para administración de sistemas
 
-Ejemplo de integración de AiKit con una interfaz **no web**: un cliente de terminal para
-administradores de sistemas, que responde preguntas sobre el estado del servidor y propone
-los comandos necesarios para cada tarea.
+Este ejemplo muestra AiKit fuera de una web: un cliente de terminal para administración de
+sistemas. El asistente responde preguntas sobre el estado del servidor y propone comandos para
+resolver tareas habituales.
 
-Muestra que el núcleo del _framework_ es independiente del tipo de cliente: la interfaz
-consume la misma API que el widget de chat web.
+La idea importante es que el núcleo no depende del tipo de cliente. Esta terminal consume la
+misma API que el widget de chat web.
 
 ## Ejecución
 
@@ -38,12 +38,12 @@ Dentro de la sesión interactiva, `nueva` reinicia la conversación y `salir` la
 ## El asistente propone, el operador decide
 
 Los comandos que sugiere el modelo se muestran resaltados y se guardan en
-`~/.config/aikit/ultimo-comando`, pero **nunca se ejecutan**. La decisión de ejecutarlos
-corresponde siempre a la persona, que puede revisarlos antes.
+`~/.config/aikit/ultimo-comando`, pero **nunca se ejecutan solos**. La persona decide si los usa
+después de revisarlos.
 
-Es una decisión de diseño deliberada: un asistente que ejecutase directamente órdenes
-generadas por un modelo de lenguaje constituiría un riesgo de seguridad difícil de acotar,
-ya que el contenido de los registros que se le entregan podría influir en su comportamiento.
+Esto es intencionado. Ejecutar directamente órdenes generadas por un modelo sería un riesgo de
+seguridad difícil de acotar, sobre todo si el modelo está leyendo registros o salidas de comandos
+que podrían influir en su respuesta.
 
 ## Servicio de consulta del sistema
 
@@ -78,9 +78,9 @@ aplicados son:
   acotados, para no volcar registros completos al modelo.
 - **Escucha local.** El servicio se enlaza a `127.0.0.1`.
 
-Conviene tener presente que el contenido de los registros llega al proveedor del modelo. En
-sistemas con datos sensibles debe valorarse el uso de un modelo local mediante Ollama, que se
-selecciona cambiando dos líneas de `aikit.yaml`.
+Ten en cuenta que el contenido de los registros llega al proveedor del modelo. En sistemas con
+datos sensibles conviene valorar un modelo local mediante Ollama; cambiarlo requiere tocar solo
+la configuración de motor en `aikit.yaml`.
 
 ## Documentación relacionada
 

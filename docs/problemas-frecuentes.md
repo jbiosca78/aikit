@@ -1,17 +1,17 @@
 # Problemas frecuentes
 
-Recopilación de los errores más habituales al poner en marcha o extender AiKit, con su causa y
-su solución.
+Esta guía recoge los fallos que suelen aparecer al arrancar AiKit o al añadir un servicio. La
+idea es ir directo a la causa probable y a la comprobación que normalmente lo arregla.
 
 ## El proceso no arranca
 
 **`FileNotFoundError` al leer el fichero de configuración.** El núcleo busca el `aikit.yaml` de
-la raíz del repositorio salvo que se indique otro mediante `AIKIT_CONFIG`. Al arrancar una
-integración propia hay que exportar esa variable con la ruta absoluta de su fichero.
+la raíz del repositorio salvo que se indique otro mediante `AIKIT_CONFIG`. Si estás arrancando
+una integración propia, revisa que esa variable apunte al fichero correcto.
 
-**`ModuleNotFoundError: No module named 'aikit'`.** El directorio raíz del repositorio no está en
-la ruta de búsqueda de Python. Los guiones de arranque de los ejemplos lo añaden a `PYTHONPATH`;
-si se lanza `uvicorn` a mano, hay que hacerlo también.
+**`ModuleNotFoundError: No module named 'aikit'`.** Python no está encontrando el directorio raíz
+del repositorio. Los guiones de arranque de los ejemplos lo añaden a `PYTHONPATH`; si lanzas
+`uvicorn` a mano, tendrás que hacerlo también.
 
 **`RuntimeError: No se encontró la clase Service`.** El módulo del servicio existe, pero no
 define una clase con ese nombre, o tiene otro nombre y no se ha declarado `class` en la
@@ -22,7 +22,7 @@ configuración.
 
 ## El servicio no se carga
 
-Si un servicio no aparece en la respuesta de `GET /readiness`, conviene revisar en este orden:
+Si un servicio no aparece en `GET /readiness`, revisa en este orden:
 
 1. Que esté declarado en la sección `services` de la configuración en uso, que puede no ser la
    que se está editando si `AIKIT_CONFIG` apunta a otra.
@@ -34,33 +34,32 @@ Los registros de arranque incluyen una línea por cada servicio cargado correcta
 
 ## El asistente no usa la herramienta
 
-Es el problema más frecuente al añadir un servicio, y casi nunca se debe a un fallo técnico:
-el modelo decide qué herramienta invocar a partir de las descripciones.
+Es el problema más frecuente al añadir un servicio. Muchas veces el código está bien, pero el
+modelo no entiende que esa herramienta le sirve para responder a la pregunta.
 
-- Revisar el campo `description` del método. Debe indicar **cuándo** usarlo, no solo qué hace.
+- Revisa el campo `description` del método. Debe indicar **cuándo** usarlo, no solo qué hace.
   Una descripción como "Devuelve el horario. Úsalo cuando pregunten a qué hora abre la tienda"
   funciona mejor que "Devuelve el horario".
-- Revisar la descripción de los parámetros, sobre todo si tienen un formato concreto, como un
+- Revisa la descripción de los parámetros, sobre todo si tienen un formato concreto, como un
   día en minúsculas o una referencia con prefijo.
-- Activar el nivel `DEBUG` en la sección `log`: los registros muestran qué herramientas se
+- Activa el nivel `DEBUG` en la sección `log`: los registros muestran qué herramientas se
   ofrecieron al modelo y cuál solicitó, con sus argumentos.
-- Comprobar en `GET /readiness` que el número de herramientas publicadas es el esperado.
+- Comprueba en `GET /readiness` que el número de herramientas publicadas es el esperado.
 - Si conviven muchas herramientas con propósitos parecidos, el modelo puede confundirlas.
   Conviene que sus descripciones marquen claramente la diferencia.
 
 ## El asistente inventa datos
 
-Suele ocurrir cuando el servicio devuelve una lista vacía sin contexto y el modelo rellena el
-hueco. Devolver una respuesta explícita, del tipo `{"encontrado": false}`, permite al modelo
-explicar la ausencia del dato. Añadir al prompt de sistema una instrucción de no inventar
-información refuerza ese comportamiento.
+Suele ocurrir cuando el servicio devuelve una lista vacía sin contexto y el modelo intenta tapar
+el hueco. Es mejor devolver algo explícito, como `{"encontrado": false}`, para que pueda explicar
+que no hay datos. Una instrucción de sistema que prohíba inventar información también ayuda.
 
 ## La conversación no mantiene el contexto
 
-Si el asistente olvida lo anterior, revisar que `history.enabled` esté activado y que
-`context_messages` no sea demasiado bajo. Conviene comprobar también que el cliente envía
-siempre el mismo `conversation_id`: si genera uno nuevo en cada petición, cada mensaje se trata
-como una conversación distinta.
+Si el asistente olvida lo anterior, revisa que `history.enabled` esté activado y que
+`context_messages` no sea demasiado bajo. Comprueba también que el cliente envía siempre el mismo
+`conversation_id`: si genera uno nuevo en cada petición, cada mensaje empieza una conversación
+distinta.
 
 ## Todos los usuarios comparten la conversación
 

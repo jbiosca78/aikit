@@ -1,7 +1,7 @@
 # Ejemplo demo
 
-Integración mínima de AiKit con varios servicios de dominio. Sirve para comprobar que el entorno
-funciona y como referencia de cómo se escribe un servicio.
+Este ejemplo es la forma corta de probar AiKit con varios servicios de dominio. Sirve para dos
+cosas: comprobar que el entorno arranca y tener a mano servicios sencillos que copiar o adaptar.
 
 ## Ejecución
 
@@ -9,7 +9,7 @@ funciona y como referencia de cómo se escribe un servicio.
 ./run.sh
 ```
 
-El servicio queda disponible en el puerto 8000. Para comprobarlo:
+El servicio queda disponible en el puerto 8000. Puedes probarlo con una petición sencilla:
 
 ```bash
 curl -X POST http://localhost:8000/chat \
@@ -17,19 +17,19 @@ curl -X POST http://localhost:8000/chat \
   -d '{"message": "que hay en el trastero?"}'
 ```
 
-El guion de arranque añade el directorio del ejemplo a la ruta de búsqueda de Python, indica su
-`aikit.yaml` mediante `AIKIT_CONFIG` y genera una clave de firma de sesión para el desarrollo.
+El guion de arranque hace el trabajo pesado: añade el directorio del ejemplo a `PYTHONPATH`, fija
+`AIKIT_CONFIG` y genera una clave de firma de sesión para desarrollo.
 
 ## Servicios incluidos
 
-- `stock`: inventario en memoria de objetos guardados por ubicación. Es el más sencillo y el
-  mejor punto de partida para entender el contrato.
+- `stock`: inventario en memoria de objetos guardados por ubicación. Es el más sencillo; empieza
+  por aquí si quieres entender el contrato sin ruido.
 - `users`: listado de usuarios con créditos, con un método que modifica el estado.
 - `music`: control de un reproductor Mopidy. Es el más extenso y muestra un servicio que se
   comunica con un sistema externo.
 
-Ninguno forma parte del _framework_: son ejemplos de lo que aporta una aplicación. Pueden
-copiarse y adaptarse, o eliminarse de la configuración si no interesan.
+Ninguno forma parte del _framework_: son ejemplos de lo que aportaría una aplicación real. Puedes
+copiarlos, adaptarlos o quitarlos del `aikit.yaml` si no los necesitas.
 
 El servicio `music` requiere un servidor Mopidy accesible; si no se dispone de él, conviene
 comentar su entrada en la sección `services` del `aikit.yaml`.

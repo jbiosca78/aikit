@@ -1,15 +1,13 @@
 # Integrar la interfaz conversacional
 
-AiKit incluye dos componentes de interfaz listos para usar: un chat flotante para aplicaciones
-web y un cliente de terminal. Ambos consumen la misma API del núcleo, lo que ilustra que este
-no está acoplado a un tipo de cliente concreto.
+AiKit trae dos formas de hablar con el núcleo: un chat flotante para webs y un cliente de
+terminal. Los dos usan la misma API, así que el backend no queda atado a una interfaz concreta.
 
 ## Chat web
 
-El componente vive en `aikit/ui/chat-popup/` y consta de dos ficheros: `chat-popup.js` con la
-lógica y `chat-popup.css` con los estilos. Es JavaScript sin dependencias, por lo que funciona
-con cualquier _frontend_: páginas estáticas, plantillas de servidor o aplicaciones construidas
-con otro marco.
+El componente está en `aikit/ui/chat-popup/` y se compone de dos ficheros: `chat-popup.js` para
+la lógica y `chat-popup.css` para los estilos. No tiene dependencias, así que puede usarse en una
+página estática, una plantilla de servidor o una aplicación montada con otro marco.
 
 ### Integración mínima
 
@@ -21,8 +19,8 @@ Se copian ambos ficheros al directorio público de la aplicación y se enlazan e
 <script src="chat-popup.js" data-api-url="http://localhost:8000/chat"></script>
 ```
 
-Con eso aparece el botón flotante y el asistente queda operativo. Si la aplicación usa plantillas
-o una disposición común, basta con declararlo una vez.
+Con eso aparece el botón flotante y el asistente queda listo. Si la aplicación usa una plantilla
+común, normalmente basta con añadirlo una sola vez.
 
 ## Opciones
 
@@ -42,8 +40,8 @@ proyectos servidos desde el mismo dominio no compartan el historial del navegado
 
 ## Configuración desde un fichero aparte
 
-Cuando hay varias opciones, resulta más cómodo declararlas en un guion propio que inserte el
-componente. Este es el enfoque que sigue el ejemplo `armarios-mario`, en su fichero
+Cuando hay varias opciones, suele ser más cómodo meterlas en un guion propio que inserte el
+componente. Ese es el enfoque que sigue el ejemplo `armarios-mario`, en su fichero
 `chat-ia.js`:
 
 ```javascript
@@ -73,10 +71,10 @@ asistente, como hace el ejemplo.
 
 ## Comportamiento
 
-El componente conserva la conversación en el almacenamiento local del navegador, de modo que
-sobrevive a la recarga y al cambio de página. Al abrirse por primera vez solicita una sesión
-al punto de acceso `POST /session` y envía el identificador obtenido en cada petición, lo que
-permite al núcleo mantener historiales separados por visitante.
+El componente guarda la conversación en el almacenamiento local del navegador, así que no se
+pierde al recargar o cambiar de página. Al abrirse por primera vez pide una sesión a
+`POST /session` y envía ese identificador en cada mensaje. Con eso el núcleo puede mantener un
+historial separado por visitante.
 
 Si el servidor no responde, el componente muestra el error en la conversación en lugar de
 fallar en silencio.
@@ -98,8 +96,8 @@ identidad visual de la aplicación sin afectar a su funcionamiento.
 ## Cliente de terminal
 
 `aikit/ui/shell/aikit-shell` es un cliente de línea de órdenes escrito en Python, sin
-dependencias externas. Está pensado para asistentes orientados a tareas técnicas, donde la
-persona ya trabaja en una terminal y una interfaz web resultaría un estorbo.
+dependencias externas. Está pensado para casos técnicos, donde la persona ya está trabajando en
+una terminal y abrir una interfaz web sería más molestia que ayuda.
 
 ```bash
 export AIKIT_URL=http://localhost:8000
