@@ -13,6 +13,15 @@ diff -rq base/web bedrock/web
 diff -rq base/web langchain/web
 ```
 
+El recuento de lineas de codigo de integracion se genera con el script incluido. Compara cada
+variante con `base/`, excluye lineas vacias y comentarios, y publica el detalle de ficheros y
+reglas aplicadas en el informe indicado:
+
+```bash
+python3 medir-integracion.py \
+  --output ../../../memoria/validacion/recuento-integracion.md
+```
+
 ## Directorios
 
 - `base/`: la tienda sin IA. Representa la aplicación existente a la que se quiere añadir un

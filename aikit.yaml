@@ -120,6 +120,15 @@ auth:
     # debe ser true en produccion; false solo permite el desarrollo local sobre HTTP.
     secure: false
 
+# Protecciones del núcleo frente a abuso de la API y de las herramientas.
+# Los accesos cookie se consideran anónimos; proxy y jwt representan usuarios autenticados.
+security:
+  rate_limit:
+    window_seconds: 60
+    anonymous_max_requests: 10
+    authenticated_max_requests: 60
+  max_calls_per_request: 6
+
 
 # Reescrituras opcionales de entrada (regex) para añadir contexto por prefijo/palabras.
 # Campos:

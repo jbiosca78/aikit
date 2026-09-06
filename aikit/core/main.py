@@ -24,8 +24,10 @@ from aikit.core.auth import (
 	build_session_config,
 	issue_session_token,
 	new_principal_id,
+	resolve_identity,
 	resolve_principal,
 )
+from aikit.core.security import RequestRateLimiter, RateLimitPolicy, ToolCallLimit
 
 #import colored_traceback
 #colored_traceback.add_hook()
@@ -39,6 +41,8 @@ config: Dict[str, Any] = {}
 services: Dict[str, ServiceContract] = {}
 tools: List[Dict[str, Any]] = []
 history_store: Optional[HistoryStore] = None
+tool_call_limit = ToolCallLimit()
+rate_limiter = RequestRateLimiter(RateLimitPolicy())
 logger = logging.getLogger("aikit")
 
 
@@ -356,6 +360,10 @@ async def init(app: FastAPI):
 		config_path = Path(os.getenv("AIKIT_CONFIG") or (Path(__file__).parent.parent / "aikit.yaml"))
 		config=yaml.safe_load(config_path.read_text())
 		setup_logging(config.get("log"))
+		global tool_call_limit, rate_limiter
+		security_cfg = config.get("security", {}) if isinstance(config, dict) else {}
+		tool_call_limit = ToolCallLimit.from_config(security_cfg)
+		rate_limiter = RequestRateLimiter(RateLimitPolicy.from_config(security_cfg))
 
 		# Init engine
 		init_engine()
@@ -514,13 +522,22 @@ async def chat(req: ChatRequest, request: Request):
 	if history_store is None:
 		raise HTTPException(status_code=503, detail="History store not initialized")
 
-	principal_id = resolve_principal(request, config)
+	principal_id, authenticated = resolve_identity(request, config)
+	allowed, retry_after = rate_limiter.check(principal_id, authenticated)
+	if not allowed:
+		logger.warning("request rate limit exceeded principal_id=%s", principal_id)
+		raise HTTPException(
+			status_code=429,
+			detail="Request rate limit exceeded",
+			headers={"Retry-After": str(retry_after)},
+		)
 	conv_id = (req.conversation_id or "default").strip() or "default"
 	logger.debug("chat request conv_id=%s message=%s", conv_id, req.message)
 	history = history_store.get_messages(principal_id, conv_id)
 	message = apply_input_rewrites(req.message)
 	effective_message = build_effective_message(message, history, config)
 	tool_events: List[Dict[str, Any]] = []
+	tool_call_count = 0
 
 	preferred_artist_query = ""
 	artist_cmd_match = re.match(r"^\s*musica:\s*pon\s+(.+?)\s*$", message, flags=re.IGNORECASE)
@@ -538,6 +555,11 @@ async def chat(req: ChatRequest, request: Request):
 				logger.exception("artist-priority detection failed query=%s", candidate_query)
 
 	def execute_tool_call_with_capture(func_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+		nonlocal tool_call_count
+		tool_call_count += 1
+		if tool_call_count > tool_call_limit.max_calls_per_request:
+			logger.warning("tool call limit exceeded principal_id=%s", principal_id)
+			return {"name": func_name, "content": json.dumps({"error": "Tool call limit exceeded"})}
 		effective_func_name = func_name
 		effective_args = args
 

@@ -175,6 +175,12 @@ def _principal_from_cookie(request: Request, p: PrincipalConfig) -> Optional[str
 
 
 def resolve_principal(request: Request, cfg: Dict[str, Any]) -> str:
+	principal_id, _ = resolve_identity(request, cfg)
+	return principal_id
+
+
+def resolve_identity(request: Request, cfg: Dict[str, Any]) -> Tuple[str, bool]:
+	"""Resuelve la identidad y distingue acceso autenticado de acceso anónimo."""
 	auth_cfg = cfg.get("auth", {}) if isinstance(cfg, dict) else {}
 	if not isinstance(auth_cfg, dict):
 		auth_cfg = {}
@@ -199,9 +205,9 @@ def resolve_principal(request: Request, cfg: Dict[str, Any]) -> str:
 
 	principal_id = resolver(request, p)
 	if principal_id:
-		return principal_id
+		return principal_id, p.method in {"proxy", "jwt"}
 
 	if p.allow_anonymous:
-		return p.anonymous_principal
+		return p.anonymous_principal, False
 
 	raise HTTPException(status_code=401, detail="Authentication required")

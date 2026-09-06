@@ -7,10 +7,14 @@ import base64
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 import uuid
+from collections import defaultdict, deque
+from fnmatch import fnmatchcase
 from pathlib import Path
+from threading import RLock
 from typing import Any, Dict, List, Optional
 
 import boto3
@@ -29,6 +33,13 @@ SESSION_MAX_AGE = 86400
 CONTEXT_MESSAGES = 12
 MAX_MESSAGES = 200
 MAX_STEPS = 6
+MAX_TOOL_CALLS_PER_REQUEST = 6
+RATE_LIMIT_WINDOW_SECONDS = 60
+RATE_LIMIT_ANONYMOUS = 10
+RATE_LIMIT_IDENTIFIED = 60
+TOOL_POLICY_ALLOWED = ("list_models", "get_model", "search_models", "compare_models", "check_availability")
+TOOL_POLICY_DENIED: tuple[str, ...] = ()
+logger = logging.getLogger("armarios_mario.bedrock")
 
 SYSTEM_PROMPT = "\n".join([
 	"Eres el asistente comercial de Armarios Mario, una tienda de armarios a medida.",
@@ -115,7 +126,18 @@ DISPATCH = {
 	"check_availability": catalogo.check_availability,
 }
 
+
+def tool_allowed(name: str) -> bool:
+	if any(fnmatchcase(name, pattern) for pattern in TOOL_POLICY_DENIED):
+		return False
+	return not TOOL_POLICY_ALLOWED or any(fnmatchcase(name, pattern) for pattern in TOOL_POLICY_ALLOWED)
+
+
+TOOLS = [tool for tool in TOOLS if tool_allowed(tool["toolSpec"]["name"])]
+
 client = boto3.Session(profile_name=AWS_PROFILE).client("bedrock-runtime")
+request_times: Dict[str, deque[float]] = defaultdict(deque)
+request_times_lock = RLock()
 
 
 # --- sesion firmada ---------------------------------------------------------
@@ -156,13 +178,27 @@ def verify_token(token: str) -> Optional[str]:
 	return sub if isinstance(sub, str) and sub else None
 
 
-def resolve_principal(request: Request) -> str:
+def resolve_identity(request: Request) -> tuple[str, bool]:
 	token = request.cookies.get("session") or request.headers.get("x-session-token", "")
 	if token:
 		sub = verify_token(token)
 		if sub:
-			return sub
-	return "anon"
+			return sub, True
+	return "anon", False
+
+
+def check_rate_limit(principal: str, identified: bool) -> Optional[int]:
+	limit = RATE_LIMIT_IDENTIFIED if identified else RATE_LIMIT_ANONYMOUS
+	key = f"{'identified' if identified else 'anonymous'}:{principal}"
+	now = time.monotonic()
+	with request_times_lock:
+		requests = request_times[key]
+		while requests and now - requests[0] >= RATE_LIMIT_WINDOW_SECONDS:
+			requests.popleft()
+		if len(requests) >= limit:
+			return max(1, int(RATE_LIMIT_WINDOW_SECONDS - (now - requests[0])))
+		requests.append(now)
+	return None
 
 
 # --- historial --------------------------------------------------------------
@@ -205,8 +241,12 @@ def build_message(message: str, history: List[Dict[str, str]]) -> str:
 # --- bucle de invocacion de herramientas ------------------------------------
 
 def execute_tool(name: str, args: Dict[str, Any]) -> str:
+	if not tool_allowed(name):
+		logger.warning("tool call denied by policy tool=%s", name)
+		return json.dumps({"error": "herramienta no autorizada por la política"})
 	fn = DISPATCH.get(name)
 	if fn is None:
+		logger.warning("unknown tool requested tool=%s", name)
 		return json.dumps({"error": f"herramienta desconocida: {name}"})
 	try:
 		return json.dumps(fn(**args), ensure_ascii=False, default=str)
@@ -216,6 +256,7 @@ def execute_tool(name: str, args: Dict[str, Any]) -> str:
 
 def chat_with_model(message: str) -> str:
 	messages: List[Dict[str, Any]] = [{"role": "user", "content": [{"text": message}]}]
+	tool_calls = 0
 
 	for _ in range(MAX_STEPS):
 		try:
@@ -239,6 +280,9 @@ def chat_with_model(message: str) -> str:
 		messages.append({"role": "assistant", "content": blocks})
 		results = []
 		for use in tool_uses:
+			tool_calls += 1
+			if tool_calls > MAX_TOOL_CALLS_PER_REQUEST:
+				return "No se pudo completar la respuesta por superar el límite de operaciones internas."
 			results.append({
 				"toolResult": {
 					"toolUseId": use.get("toolUseId", ""),
@@ -285,7 +329,14 @@ async def create_session(response: Response) -> Dict[str, Any]:
 
 @app.post("/chat")
 async def chat(req: ChatRequest, request: Request) -> Dict[str, str]:
-	principal = resolve_principal(request)
+	principal, identified = resolve_identity(request)
+	retry_after = check_rate_limit(principal, identified)
+	if retry_after is not None:
+		raise HTTPException(
+			status_code=429,
+			detail="Request rate limit exceeded",
+			headers={"Retry-After": str(retry_after)},
+		)
 	conversation = (req.conversation_id or "default").strip() or "default"
 
 	history = get_messages(principal, conversation)

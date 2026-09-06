@@ -84,7 +84,7 @@ una cabecera. AiKit solo la lee.
 El proxy debe eliminar esa cabecera si llega del cliente, y el servicio no debe ser accesible sin
 pasar por él.
 
-**`method: jwt`**. Se valida la firma HS256 del testigo recibido en `Authorization: Bearer`,
+**`method: jwt`**. Se valida la firma HS256 del token recibido en `Authorization: Bearer`,
 junto con su vigencia y, opcionalmente, emisor y audiencia.
 
 ```yaml
@@ -130,6 +130,29 @@ history:
 Subirlo puede mejorar la continuidad de la conversación, pero también aumenta el coste de cada
 llamada al modelo.
 
+### security
+
+Define límites frente al abuso de la API y del uso de herramientas.
+
+```yaml
+security:
+  rate_limit:
+    window_seconds: 60
+    anonymous_max_requests: 10
+    authenticated_max_requests: 60
+  max_calls_per_request: 6
+```
+
+Las cuotas se aplican por identidad en una ventana deslizante. Las identidades verificadas mediante
+`proxy` o `jwt` usan `authenticated_max_requests`; las sesiones `cookie` y las peticiones sin
+identidad válida usan `anonymous_max_requests`. Cuando se supera el límite, `POST /chat` devuelve
+HTTP 429 con la cabecera `Retry-After`.
+
+`allowed` y `denied` aceptan patrones como `catalogo__*`. Las exclusiones prevalecen sobre las
+inclusiones. Si `allowed` está vacío, se permiten todas las herramientas registradas excepto las
+incluidas en `denied`. El núcleo elimina las herramientas no permitidas de la lista enviada al motor
+y rechaza cualquier llamada no autorizada o que supere `max_calls_per_request`.
+
 ### rewrites
 
 Permite reescribir mensajes de entrada con expresiones regulares antes de mandarlos al modelo.
@@ -150,7 +173,7 @@ rewrites:
 |---|---|
 | `AIKIT_CONFIG` | Ruta del fichero de configuración a utilizar |
 | `AIKIT_SESSION_SECRET` | Clave de firma de las sesiones, en el modo `cookie` |
-| `AIKIT_JWT_SECRET` | Clave de verificación de testigos, en el modo `jwt` |
+| `AIKIT_JWT_SECRET` | Clave de verificación de tokens, en el modo `jwt` |
 | `AIKIT_CORS_ORIGINS` | Orígenes permitidos por CORS, separados por comas. Por defecto `*` |
 | `AIKIT_CORS_ALLOW_CREDENTIALS` | Permite credenciales CORS cuando los orígenes son explícitos. Por defecto `true` |
 | `AIKIT_TRACEBACK_SHOW_LOCALS` | Muestra variables locales en trazas de error si vale `1`, `true` o `yes` |

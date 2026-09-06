@@ -6,11 +6,19 @@
     function loadState() {
         try {
             const raw = localStorage.getItem(STORE_KEY);
-            if (raw) return JSON.parse(raw);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                return {
+                    open: Boolean(parsed.open),
+                    conversation_id: parsed.conversation_id || "chat-" + Date.now(),
+                    messages: Array.isArray(parsed.messages) ? parsed.messages : [],
+                    token: typeof parsed.token === "string" ? parsed.token : "",
+                };
+            }
         } catch (err) {
             // estado corrupto: se descarta y se empieza de nuevo
         }
-        return { conversation_id: "chat-" + Date.now(), messages: [], token: "" };
+        return { open: false, conversation_id: "chat-" + Date.now(), messages: [], token: "" };
     }
 
     function saveState(state) {
@@ -40,11 +48,11 @@
         <div class="chat-panel" hidden>
             <header class="chat-header">
                 <span>Asistente</span>
-                <button class="chat-close" type="button">&times;</button>
+                <button class="chat-close" type="button" aria-label="Cerrar chat">&times;</button>
             </header>
-            <div class="chat-messages"></div>
+            <div class="chat-messages" aria-live="polite"></div>
             <form class="chat-form">
-                <input class="chat-input" type="text" placeholder="Pregunta por medidas, stock..." />
+                <textarea class="chat-input" rows="2" placeholder="Pregunta por medidas, stock..."></textarea>
                 <button class="chat-send" type="submit">Enviar</button>
             </form>
         </div>`;
@@ -54,10 +62,11 @@
     const messagesEl = widget.querySelector(".chat-messages");
     const form = widget.querySelector(".chat-form");
     const input = widget.querySelector(".chat-input");
+    const send = widget.querySelector(".chat-send");
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, error) {
         const node = document.createElement("div");
-        node.className = "chat-message chat-" + role;
+        node.className = "chat-message chat-" + role + (error ? " chat-error" : "");
         node.textContent = text;
         messagesEl.appendChild(node);
         messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -65,29 +74,38 @@
     }
 
     state.messages.forEach(function (m) {
-        appendMessage(m.role, m.content);
+        appendMessage(m.role, m.content, Boolean(m.error));
     });
 
     widget.querySelector(".chat-toggle").addEventListener("click", function () {
         panel.hidden = !panel.hidden;
+        state.open = !panel.hidden;
+        saveState(state);
         if (!panel.hidden) input.focus();
     });
 
     widget.querySelector(".chat-close").addEventListener("click", function () {
         panel.hidden = true;
+        state.open = false;
+        saveState(state);
     });
+
+    if (state.open) panel.hidden = false;
 
     form.addEventListener("submit", async function (event) {
         event.preventDefault();
         const message = input.value.trim();
         if (!message) return;
 
-        appendMessage("user", message);
+        appendMessage("user", message, false);
         state.messages.push({ role: "user", content: message });
         saveState(state);
         input.value = "";
 
-        const pending = appendMessage("assistant", "Pensando...");
+        send.disabled = true;
+        input.disabled = true;
+        const pending = appendMessage("assistant", "Pensando...", false);
+        pending.classList.add("chat-loading");
 
         try {
             const token = await ensureToken();
@@ -106,12 +124,27 @@
 
             const data = await res.json();
             const answer = data.answer || "Sin respuesta del asistente";
+            pending.classList.remove("chat-loading");
             pending.textContent = answer;
             state.messages.push({ role: "assistant", content: answer });
             saveState(state);
         } catch (err) {
             pending.classList.add("chat-error");
+            pending.classList.remove("chat-loading");
             pending.textContent = "No se pudo conectar con el asistente: " + err.message;
+            state.messages.push({ role: "assistant", content: pending.textContent, error: true });
+            saveState(state);
+        } finally {
+            send.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+    });
+
+    input.addEventListener("keydown", function (event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            form.requestSubmit();
         }
     });
 })();
