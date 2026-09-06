@@ -14,7 +14,6 @@ import os
 import time
 import uuid
 from collections import defaultdict, deque
-from fnmatch import fnmatchcase
 from pathlib import Path
 from threading import RLock
 from typing import Any, Dict, List, Optional
@@ -39,8 +38,6 @@ MAX_MESSAGES = 200
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_ANONYMOUS = 10
 RATE_LIMIT_IDENTIFIED = 60
-TOOL_POLICY_ALLOWED = ("list_models", "get_model", "search_models", "compare_models", "check_availability")
-TOOL_POLICY_DENIED: tuple[str, ...] = ()
 logger = logging.getLogger("armarios_mario.langchain")
 
 SYSTEM_PROMPT = "\n".join([
@@ -104,17 +101,7 @@ def check_availability(model: str) -> Dict[str, Any]:
 	return catalogo.check_availability(model)
 
 
-def tool_allowed(name: str) -> bool:
-	if any(fnmatchcase(name, pattern) for pattern in TOOL_POLICY_DENIED):
-		return False
-	return not TOOL_POLICY_ALLOWED or any(fnmatchcase(name, pattern) for pattern in TOOL_POLICY_ALLOWED)
-
-
-TOOLS = [
-	tool for tool in [list_models, get_model, search_models, compare_models, check_availability]
-	if tool_allowed(tool.name)
-]
-logger.info("tools enabled by policy count=%s", len(TOOLS))
+TOOLS = [list_models, get_model, search_models, compare_models, check_availability]
 
 llm = ChatBedrockConverse(model=MODEL_ID, credentials_profile_name=AWS_PROFILE)
 agent = create_react_agent(llm, TOOLS)

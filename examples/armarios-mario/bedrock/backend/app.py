@@ -12,7 +12,6 @@ import os
 import time
 import uuid
 from collections import defaultdict, deque
-from fnmatch import fnmatchcase
 from pathlib import Path
 from threading import RLock
 from typing import Any, Dict, List, Optional
@@ -37,8 +36,6 @@ MAX_TOOL_CALLS_PER_REQUEST = 6
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_ANONYMOUS = 10
 RATE_LIMIT_IDENTIFIED = 60
-TOOL_POLICY_ALLOWED = ("list_models", "get_model", "search_models", "compare_models", "check_availability")
-TOOL_POLICY_DENIED: tuple[str, ...] = ()
 logger = logging.getLogger("armarios_mario.bedrock")
 
 SYSTEM_PROMPT = "\n".join([
@@ -126,14 +123,6 @@ DISPATCH = {
 	"check_availability": catalogo.check_availability,
 }
 
-
-def tool_allowed(name: str) -> bool:
-	if any(fnmatchcase(name, pattern) for pattern in TOOL_POLICY_DENIED):
-		return False
-	return not TOOL_POLICY_ALLOWED or any(fnmatchcase(name, pattern) for pattern in TOOL_POLICY_ALLOWED)
-
-
-TOOLS = [tool for tool in TOOLS if tool_allowed(tool["toolSpec"]["name"])]
 
 client = boto3.Session(profile_name=AWS_PROFILE).client("bedrock-runtime")
 request_times: Dict[str, deque[float]] = defaultdict(deque)
@@ -241,9 +230,6 @@ def build_message(message: str, history: List[Dict[str, str]]) -> str:
 # --- bucle de invocacion de herramientas ------------------------------------
 
 def execute_tool(name: str, args: Dict[str, Any]) -> str:
-	if not tool_allowed(name):
-		logger.warning("tool call denied by policy tool=%s", name)
-		return json.dumps({"error": "herramienta no autorizada por la política"})
 	fn = DISPATCH.get(name)
 	if fn is None:
 		logger.warning("unknown tool requested tool=%s", name)
