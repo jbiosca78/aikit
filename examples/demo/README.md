@@ -27,6 +27,12 @@ El guion de arranque hace el trabajo pesado: añade el directorio del ejemplo a 
 - `users`: listado de usuarios con créditos, con un método que modifica el estado.
 - `music`: control de un reproductor Mopidy. Es el más extenso y muestra un servicio que se
   comunica con un sistema externo.
+- `mcp_client`: publica como herramientas las de un servidor MCP externo. No añade lógica de
+  dominio propia; es un ejemplo de que incorporar un protocolo ajeno no obliga a tocar el núcleo,
+  porque descubre sus métodos en `list_methods()` y los resuelve con `__getattr__`. El servidor se
+  configura en la cabecera del propio fichero, así que para usar varios basta con copiarlo y
+  registrar cada copia con su nombre. Viene comentado en el `aikit.yaml` y requiere
+  `pip install mcp`.
 
 Ninguno forma parte del _framework_: son ejemplos de lo que aportaría una aplicación real. Puedes
 copiarlos, adaptarlos o quitarlos del `aikit.yaml` si no los necesitas.

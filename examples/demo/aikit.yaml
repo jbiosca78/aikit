@@ -194,3 +194,9 @@ services:
   #
   #- name: users
   #
+  # Publica como herramientas las de un servidor MCP externo. Requiere `pip install mcp`.
+  # El servidor se configura en la cabecera de services/mcp_client.py; para conectar con
+  # varios, copia ese fichero y registra cada copia aqui con su propio nombre.
+  #- name: mcp
+  #  module: services.mcp_client
+  #
