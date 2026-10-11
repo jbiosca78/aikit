@@ -41,8 +41,9 @@ python3 medir-integracion.py \
   - `backend/`: `app.py`, con el bucle de invocacion de herramientas, la gestion del historial
     y la firma de sesiones, y `catalogo.py` con la misma lógica de dominio.
 
-- `langchain/`: la misma tienda con el asistente implementado mediante LangChain, el marco de
-  orquestacion mas extendido. Es el segundo termino de comparacion.
+- `langchain/`: la misma tienda con el asistente implementado mediante LangChain, marco de
+  orquestacion con conectores y mecanismos de invocacion de herramientas documentados. Es el
+  segundo termino de comparacion.
   - `web/`: identica a la de `bedrock`, ya que LangChain no aporta componentes de interfaz.
   - `backend/`: `app.py`, donde las herramientas se declaran con decoradores y el bucle lo
     resuelve un agente, pero la sesión, el historial y el servicio web siguen siendo propios.

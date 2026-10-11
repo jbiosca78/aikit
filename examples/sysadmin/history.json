@@ -1,0 +1,22 @@
+{
+  "operador": {
+    "shell-e6bae900e21e": [
+      {
+        "role": "user",
+        "content": "¿con que comando puedo ver los puertos abiertos?"
+      },
+      {
+        "role": "assistant",
+        "content": "Para ver los puertos abiertos en escucha puedes usar `ss` (recomendado) o `netstat`:\n\n```bash\nss -tulnp\n```\n\n- `-t` TCP, `-u` UDP\n- `-l` solo en escucha\n- `-n` numérico (sin resolver nombres)\n- `-p` muestra el proceso (requiere root para verlos todos)\n\nAlternativa con `netstat`:\n\n```bash\nnetstat -tulnp\n```\n\nSi necesitas ver también conexiones establecidas, omite `-l`."
+      },
+      {
+        "role": "user",
+        "content": "¿con que comando puedo ver los puertos abiertos?"
+      },
+      {
+        "role": "assistant",
+        "content": "Para ver los puertos abiertos en escucha puedes usar `ss` (recomendado) o `netstat`:\n\n```bash\nss -tulnp\n```\n\n- `-t` TCP, `-u` UDP\n- `-l` solo en escucha\n- `-n` numérico (sin resolver nombres)\n- `-p` muestra el proceso (requiere root para verlos todos)\n\nAlternativa con `netstat`:\n\n```bash\nnetstat -tulnp\n```\n\nSi necesitas ver también conexiones establecidas, omite `-l`."
+      }
+    ]
+  }
+}
