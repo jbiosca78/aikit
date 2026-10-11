@@ -1,0 +1,22 @@
+[Unit]
+Description=Backend de Armarios Mario (AIKit)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=TU_USUARIO
+Group=TU_GRUPO
+WorkingDirectory=/srv/armarios
+Environment="PYTHONPATH=/srv/armarios/aikit"
+Environment="AIKIT_CONFIG=/srv/armarios/aikit.yaml"
+Environment="AIKIT_CATALOGO_CSV=/srv/armarios/catalogo.csv"
+ExecStart=/srv/armarios/venv/bin/uvicorn aikit.core.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=armarios-mario
+
+[Install]
+WantedBy=multi-user.target
