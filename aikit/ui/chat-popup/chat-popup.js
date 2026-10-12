@@ -9,22 +9,31 @@
             placeholder: d.placeholder || "¿En qué puedo ayudarte?",
             apiUrl:      d.apiUrl      || "http://localhost:8000/chat",
             storageKey:  d.storageKey  || "aikit-chat-popup-v1",
+            sharedKey:   d.sharedKey   || "aikit-chat-shared-v1",
         };
     }
 
     function loadState(cfg) {
         const newId = () => `chat-${Date.now()}`;
+        const conversationKey = `${cfg.sharedKey}-conversation`;
         try {
             const raw = localStorage.getItem(cfg.storageKey);
+            const sharedId = localStorage.getItem(conversationKey);
             if (!raw) {
-                return { open: false, conversation_id: newId(), messages: [] };
+                const state = { open: false, conversation_id: sharedId || newId(), messages: [] };
+                localStorage.setItem(conversationKey, state.conversation_id);
+                saveState(cfg, state);
+                return state;
             }
             const parsed = JSON.parse(raw);
-            return {
+            const state = {
                 open: Boolean(parsed.open),
-                conversation_id: parsed.conversation_id || newId(),
+                conversation_id: sharedId || parsed.conversation_id || newId(),
                 messages: Array.isArray(parsed.messages) ? parsed.messages : [],
             };
+            localStorage.setItem(conversationKey, state.conversation_id);
+            if (state.conversation_id !== parsed.conversation_id) saveState(cfg, state);
+            return state;
         } catch (_err) {
             return { open: false, conversation_id: newId(), messages: [] };
         }
@@ -34,22 +43,33 @@
         localStorage.setItem(cfg.storageKey, JSON.stringify(state));
     }
 
+    let sessionTokenPromise = null;
+
     // Sesión firmada por el backend: aísla el historial de cada visitante.
     async function getSessionToken(cfg) {
-        const key = `${cfg.storageKey}-session`;
-        const cached = localStorage.getItem(key);
-        if (cached) return cached;
-
-        try {
-            const res = await fetch(cfg.apiUrl.replace(/\/chat$/, "/session"), { method: "POST" });
-            if (!res.ok) return "";
-            const data = await res.json();
-            const token = data && data.token ? String(data.token) : "";
-            if (token) localStorage.setItem(key, token);
-            return token;
-        } catch (_err) {
-            return "";
+        const key = `${cfg.sharedKey}-session`;
+        const cached = localStorage.getItem(key) || localStorage.getItem(`${cfg.storageKey}-session`);
+        if (cached) {
+            localStorage.setItem(key, cached);
+            return cached;
         }
+        if (sessionTokenPromise) return sessionTokenPromise;
+
+        sessionTokenPromise = (async () => {
+            try {
+                const res = await fetch(cfg.apiUrl.replace(/\/chat$/, "/session"), { method: "POST" });
+                if (!res.ok) return "";
+                const data = await res.json();
+                const token = data && data.token ? String(data.token) : "";
+                if (token) localStorage.setItem(key, token);
+                return token;
+            } catch (_err) {
+                return "";
+            } finally {
+                sessionTokenPromise = null;
+            }
+        })();
+        return sessionTokenPromise;
     }
 
     function createWidget(cfg) {
@@ -196,6 +216,12 @@
         const cfg = getConfig();
         const state = loadState(cfg);
         const widget = createWidget(cfg);
+        window.AiKitChat = {
+            apiUrl: cfg.apiUrl,
+            sharedKey: cfg.sharedKey,
+            getConversationId: () => state.conversation_id,
+            getSessionToken: () => getSessionToken(cfg),
+        };
         const messages = widget.querySelector(".chat-popup-messages");
         const form = widget.querySelector(".chat-popup-form");
         const input = widget.querySelector(".chat-popup-input");

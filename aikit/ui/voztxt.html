@@ -294,6 +294,87 @@
             const sendButton = document.getElementById('sendButton');
             const responseContainer = document.getElementById('responseContainer');
             const responseText = document.getElementById('responseText');
+            const popupScript = document.querySelector('script[src*="chat-popup"]');
+            const popupConfig = popupScript ? popupScript.dataset : {};
+            const fallbackApiUrl = popupConfig.apiUrl || 'http://localhost:8000/chat';
+            const storageKey = popupConfig.storageKey || 'aikit-chat-popup-v1';
+            const sharedKey = popupConfig.sharedKey || 'aikit-chat-shared-v1';
+
+            function getPopupClient() {
+                if (window.AiKitChat) return window.AiKitChat;
+                try {
+                    return window.parent !== window ? window.parent.AiKitChat || null : null;
+                } catch (_error) {
+                    return null;
+                }
+            }
+
+            function getSharedConversationId() {
+                const client = getPopupClient();
+                if (client) return client.getConversationId();
+
+                try {
+                    const conversationKey = `${sharedKey}-conversation`;
+                    const sharedId = localStorage.getItem(conversationKey);
+                    if (sharedId) return sharedId;
+
+                    const raw = localStorage.getItem(storageKey);
+                    const state = raw ? JSON.parse(raw) : {};
+                    const conversationId = state.conversation_id || `chat-${Date.now()}`;
+                    localStorage.setItem(conversationKey, conversationId);
+                    localStorage.setItem(storageKey, JSON.stringify({
+                        ...state,
+                        open: Boolean(state.open),
+                        conversation_id: conversationId,
+                        messages: Array.isArray(state.messages) ? state.messages : [],
+                    }));
+                    return conversationId;
+                } catch (_error) {
+                    return `chat-${Date.now()}`;
+                }
+            }
+
+            async function getSharedSessionToken() {
+                const client = getPopupClient();
+                if (client) return client.getSessionToken();
+
+                const tokenKey = `${sharedKey}-session`;
+                const cached = localStorage.getItem(tokenKey) || localStorage.getItem(`${storageKey}-session`);
+                if (cached) {
+                    localStorage.setItem(tokenKey, cached);
+                    return cached;
+                }
+
+                try {
+                    const response = await fetch(fallbackApiUrl.replace(/\/chat$/, '/session'), {
+                        method: 'POST',
+                    });
+                    if (!response.ok) return '';
+                    const data = await response.json();
+                    const token = data && data.token ? String(data.token) : '';
+                    if (token) localStorage.setItem(tokenKey, token);
+                    return token;
+                } catch (_error) {
+                    return '';
+                }
+            }
+
+            function setFormattedText(node, content) {
+                const text = String(content);
+                const boldPattern = /\*\*([\s\S]+?)\*\*/g;
+                let lastIndex = 0;
+                let match;
+
+                node.replaceChildren();
+                while ((match = boldPattern.exec(text)) !== null) {
+                    node.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+                    const strong = document.createElement('strong');
+                    strong.textContent = match[1];
+                    node.appendChild(strong);
+                    lastIndex = boldPattern.lastIndex;
+                }
+                node.appendChild(document.createTextNode(text.slice(lastIndex)));
+            }
 
             let recognition;
             let isRecording = false;
@@ -490,15 +571,18 @@
                 responseText.innerHTML = '<span class="loading"></span> Pensando...';
 
                 try {
-                    // Enviar al endpoint
-                    const response = await fetch('http://localhost:8000/chat', {
+                    const client = getPopupClient();
+                    const chatApiUrl = client ? client.apiUrl : fallbackApiUrl;
+                    const token = await getSharedSessionToken();
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (token) headers['x-session-token'] = token;
+
+                    const response = await fetch(chatApiUrl, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers,
                         body: JSON.stringify({
                             message: message,
-                            conversation_id: 'web-client'
+                            conversation_id: getSharedConversationId()
                         })
                     });
 
@@ -507,7 +591,7 @@
                     }
 
                     const data = await response.json();
-                    responseText.textContent = data.answer;
+                    setFormattedText(responseText, data.answer);
                     status.textContent = 'Respuesta recibida';
 
                     // Volver el texto gris después de enviar
@@ -515,7 +599,7 @@
 
                 } catch (error) {
                     console.error('Error al enviar:', error);
-                    responseText.textContent = `Error: ${error.message}. Asegúrate de que el servidor esté corriendo en http://localhost:8000`;
+                    setFormattedText(responseText, `Error: ${error.message}. Asegúrate de que el servidor esté corriendo en http://localhost:8000`);
                     status.textContent = 'Error al conectar con el servidor';
                 } finally {
                     // Rehabilitar botón
