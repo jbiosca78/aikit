@@ -72,10 +72,27 @@
         return widget;
     }
 
+    function setMessageContent(node, content) {
+        const text = String(content);
+        const boldPattern = /\*\*([\s\S]+?)\*\*/g;
+        let lastIndex = 0;
+        let match;
+
+        node.replaceChildren();
+        while ((match = boldPattern.exec(text)) !== null) {
+            node.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+            const strong = document.createElement("strong");
+            strong.textContent = match[1];
+            node.appendChild(strong);
+            lastIndex = boldPattern.lastIndex;
+        }
+        node.appendChild(document.createTextNode(text.slice(lastIndex)));
+    }
+
     function appendMessage(container, role, content, error) {
         const node = document.createElement("article");
         node.className = `chat-popup-msg ${role}${error ? " error" : ""}`;
-        node.textContent = content;
+        setMessageContent(node, content);
         container.appendChild(node);
         container.scrollTop = container.scrollHeight;
         return node;
@@ -135,7 +152,7 @@
             const answer = data && data.answer ? String(data.answer) : "Sin respuesta del asistente";
 
             thinkingNode.classList.remove("loading");
-            thinkingNode.textContent = answer;
+            setMessageContent(thinkingNode, answer);
 
             state.messages.push({ role: "assistant", content: answer, ts: Date.now() });
             saveState(cfg, state);
@@ -143,7 +160,7 @@
             const text = `No se pudo conectar con el asistente: ${err.message}`;
             thinkingNode.classList.remove("loading");
             thinkingNode.classList.add("error");
-            thinkingNode.textContent = text;
+            setMessageContent(thinkingNode, text);
 
             state.messages.push({ role: "assistant", content: text, error: true, ts: Date.now() });
             saveState(cfg, state);
