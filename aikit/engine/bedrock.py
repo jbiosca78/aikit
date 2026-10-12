@@ -3,10 +3,21 @@
 # requisites:
 # pip install boto3
 
-import boto3
-from typing import Dict, Any, List, Optional
-import re
 import logging
+import re
+from typing import Dict, Any, List, Optional
+
+logger = logging.getLogger("aikit.engine.bedrock")
+
+try:
+    import boto3
+except ImportError as exc:
+    logger.error("boto3 no está instalado. Instálalo con: pip install boto3")
+    boto3 = None
+    _boto3_import_error = exc
+else:
+    _boto3_import_error = None
+
 from botocore.exceptions import ClientError
 
 # Variables globales
@@ -14,7 +25,6 @@ client = None
 model_id = None
 active_system_prompt = ""
 active_max_steps = 6
-logger = logging.getLogger("aikit.engine.bedrock")
 
 def init(
 	model: str = "amazon.nova-lite-v1:0",
@@ -44,6 +54,10 @@ def init(
 		mistral.mistral-large-2402-v1:0
 	"""
 	global client, model_id, active_system_prompt, active_max_steps
+	if boto3 is None:
+		logger.error("No se puede inicializar Bedrock porque boto3 no está instalado. Ejecuta: pip install boto3")
+		raise RuntimeError("No se puede inicializar Bedrock porque boto3 no está instalado. Ejecuta: pip install boto3") from _boto3_import_error
+
 	model_id = model
 	active_system_prompt = (prompt or "").strip()
 	active_max_steps = max(1, int(max_steps))
